@@ -333,7 +333,6 @@ int main(int argc, char const *argv[]) {
         state = bp_param_from_direct(blockmodel, pa, cab);
         pa.clear();
         cab.clear();
-
     }
 
     /// Configuration outputs

@@ -1,0 +1,1 @@
+The scripts in `tests` ensure that the new object-oriented implementation generates the same outputs as the old code.
