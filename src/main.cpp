@@ -219,7 +219,7 @@ int main(int argc, char const *argv[]) {
     }
 
     if (var_map.count("randomize") > 0) {
-        randomize = true;
+        bool randomize = true;
     }
 
 
