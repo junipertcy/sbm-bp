@@ -1,0 +1,28 @@
+sudo: required
+language: cpp
+os:
+  - linux
+  - osx
+compiler:
+  - gcc
+  - clang
+cache:
+  apt: true
+addons:
+  apt:
+    sources:
+      - llvm-toolchain-precise
+      - ubuntu-toolchain-r-test
+      - boost-latest
+    packages:
+      - clang-3.7
+      - g++-5
+      - gcc-5
+      - libboost1.55-all-dev
+notifications:
+  email: false
+install:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo unlink /usr/bin/g++; sudo ln -s /usr/bin/g++-5 /usr/bin/g++; fi
+script:
+  - cmake .; make; bin/bp -l dataset/N_1000-Q_2-method_cab_ec-eps_0.1-c_3.0.edgelist -n 500 500 --pa 0.5 0.5 --cab 3.63 2.36 3.63 -t 1000 -i 0 --deg_corr_flag 0 -m infer
+  - cmake .; make; bin/bp -l dataset/N_1000-Q_2-method_cab_ec-eps_0.1-c_3.0.edgelist -n 500 500 --pa 0.5 0.5 --cab 3.63 2.36 3.63 -t 1000 -i 0 --deg_corr_flag 0 -m learn
