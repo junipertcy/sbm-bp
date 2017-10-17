@@ -73,14 +73,12 @@ void belief_propagation::inference(const blockmodel_t &blockmodel,
                                    std::mt19937 &engine) noexcept {
 
     expand_bp_params(state);
-
+    int niter = converge(conv_crit, time_conv, dumping_rate, engine);
+    double f = compute_f();
+    double e = compute_entropy();
+    std::cout << e << " " << f << " " << compute_overlap() << " " << niter << " \n";
     if (if_output_marginals_) {
         output_mat<double_mat_t>(real_psi_, std::cout);
-    } else {
-        int niter = converge(conv_crit, time_conv, dumping_rate, engine);
-        double f = compute_f();
-        double e = compute_entropy();
-        std::cout << e << " " << f << " " << compute_overlap() << " " << niter;
     }
 }
 

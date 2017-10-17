@@ -18,6 +18,7 @@
 
 // Boost
 #include <boost/program_options.hpp>
+#include <curses.h>
 
 // Program headers
 #include "types.h"
@@ -95,7 +96,7 @@ int main(int argc, char const *argv[]) {
 
             // bp message
             ("bp_messages_init_flag,i", po::value<unsigned int>(&bp_messages_init_flag)->default_value(0),
-             "flag to initialize BP. Valid values are 0, 1 and 2. Defualt 0."\
+             "flag to initialize BP. Valid values are 0, 1, 2, and 3. Defualt 0."\
             "0 means initialized by random messages, "\
             "1 means initialized by partly planted configuration, others left random"\
             "2 means initialized by planted configuration, with random noise on all sites"\
@@ -150,31 +151,31 @@ int main(int argc, char const *argv[]) {
 
 
     if (var_map.count("help") > 0 || argc == 1) {
-        std::cout << "BP algorithms for the SBM (final output only)\n";
-        std::cout << "Usage:\n"
+        std::clog << "BP algorithms for the SBM (final output only)\n";
+        std::clog << "Usage:\n"
                   << "  " + std::string(argv[0]) + " [--option_1=value] [--option_s2=value] ...\n";
-        std::cout << description;
+        std::clog << description;
         return 0;
     }
 
     if (var_map.count("edge_list_path") == 0) {
-        std::cout << "edge_list_path is required (-e flag)\n";
+        std::clog << "edge_list_path is required (-e flag)\n";
         return 1;
     }
 
     if (var_map.count("mode") == 0) {
-        std::cout << "mode is required (-m flag)\n";
+        std::clog << "mode is required (-m flag)\n";
         return 1;
     }
 
     if (var_map.count("n") == 0) {
-        std::cout << "n is required (-n flag)\n";
+        std::clog << "n is required (-n flag)\n";
         return 1;
     }
 
     // control membership assignment parameters
     if (var_map.count("mb_n") + var_map.count("mb") + var_map.count("mb_path") > 1) {
-        std::cout << "Error! Please just select one option to assign the membership vector.\n";
+        std::clog << "Error! Please just select one option to assign the membership vector.\n";
         return 1;
     } else if (var_map.count("mb_n") + var_map.count("mb") + var_map.count("mb_path") == 0) {
         // default
@@ -192,10 +193,10 @@ int main(int argc, char const *argv[]) {
     }
 
     if (var_map.count("epsilon_c") + (var_map.count("pa") * var_map.count("cab")) > 1) {
-        std::cout << "Error! Please just choose one way to initialize the pa/cab parameter.\n";
+        std::clog << "Error! Please just choose one way to initialize the pa/cab parameter.\n";
         return 1;
     } else if (var_map.count("epsilon_c") == 0 && (var_map.count("pa") + var_map.count("cab")) < 2) {
-        std::cout << "Error! Please just input both pa/cab parameters.\n";
+        std::clog << "Error! Please just input both pa/cab parameters.\n";
         return 1;
     } else if (var_map.count("epsilon_c") > 0) {
         bm_params_string = "cab_ec";
@@ -206,7 +207,7 @@ int main(int argc, char const *argv[]) {
     if (var_map.count("bp_messages_init_flag") > 0) {
         if (bp_messages_init_flag != 0) {
             if (var_map.count("beliefs_path") == 0) {
-                std::cout << "Error! Please assign the file path of the initial belief of node membership.\n";
+                std::clog << "Error! Please assign the file path of the initial belief of node membership.\n";
                 return 1;
             }
         } else {
@@ -257,7 +258,7 @@ int main(int argc, char const *argv[]) {
         }
         // sanity check!
         if (mb.size() != accu) {
-            std::cout << "Error! Size of assigned membership vector does not fit the number of nodes assigned by n.\n";
+            std::clog << "Error! Size of assigned membership vector does not fit the number of nodes assigned by n.\n";
             return 1;
         }
     } else if (memberships_status == "from_file") {
@@ -278,10 +279,14 @@ int main(int argc, char const *argv[]) {
 
     uint_vec_t true_conf;
     if (var_map.count("true_conf_path") == 0) {
-        std::cout << "Warning! Assign true conf using node membership.\n";
+        std::clog << "Warning! Assign true conf using ordered node membership.\n";
         true_conf = memberships_init;
     } else {
-        load_confs(true_conf, true_conf_path);
+        bool load_confs_res = load_confs(true_conf, true_conf_path);
+        if (!load_confs_res) {
+            std::clog << "Warning! Reading true_conf_path error. Assign true conf using ordered node membership.\n";
+            true_conf = memberships_init;
+        }
     }
 
     // Now, initiate the blockmodel instance
