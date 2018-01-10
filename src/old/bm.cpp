@@ -274,6 +274,7 @@ void blockmodel:: graph_write_gml(const char *fname)
 	assert(fout.good() && "can not write to the file");
 	cout<<"Writting graph into "<<fname<<"..."<<flush;
 	fout << "graph [" << endl;
+        fout << "  directed 0" << endl;
 	for(int i=0;i<N;i++){
 		fout << "  node" << endl;
 		fout << "  [" << endl;
