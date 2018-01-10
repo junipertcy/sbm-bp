@@ -70,6 +70,7 @@ int main(int argc, char const *argv[]) {
     bool cab_ec = false;
     uint_vec_t num_nodes_per_block;
     float_vec_t probabilities;   // if (use_ppm | use_eps_c) is on, it will be interpreted differently
+    uint_vec_t fixed_nodes;
     /// Setting cab and pa; case II
     double_vec_t pa;
     double_vec_t cab;
@@ -124,7 +125,7 @@ int main(int argc, char const *argv[]) {
 
             ("probabilities,P", po::value<float_vec_t>(&probabilities)->multitoken(),
              "In normal mode (SBM): probability matrix in row major order. In PPM mode: p_in followed by p_out.")
-
+            ("fixed_nodes,f", po::value<uint_vec_t>(&fixed_nodes)->multitoken(), "Fixed nodes with known labels.")
             ("cab_rand,u0", "Randomized cab and pa (defaults to SBM).")
             ("cab_ppm,u1",
              "Use planted partition probabilities to define cab and pa (defaults to SBM).")
@@ -138,7 +139,7 @@ int main(int argc, char const *argv[]) {
             ("if_output_marginals", "whether output marginals in the infer mode")
 
 
-            ("mode,m", po::value<std::string>(&mode), "Path to the input edgelist file.")
+            ("mode,m", po::value<std::string>(&mode), "Mode for the algorithm; valid values: infer | learn.")
             ("seed,d", po::value<unsigned int>(&seed),
              "Seed of the pseudo random number generator (Mersenne-twister 19937). "\
     "A random seed is used if seed is not specified.")
@@ -205,11 +206,13 @@ int main(int argc, char const *argv[]) {
     }
 
     if (var_map.count("bp_messages_init_flag") > 0) {
-        if (bp_messages_init_flag != 0) {
+        if (bp_messages_init_flag != 0 && var_map.count("fixed_nodes") == 0) {
             if (var_map.count("beliefs_path") == 0) {
                 std::clog << "Error! Please assign the file path of the initial belief of node membership.\n";
                 return 1;
             }
+        } else if (var_map.count("fixed_nodes") > 0) {
+            std::clog << "Randomly assign initial messages, except certain fixed nodes.\n";
         } else {
             std::clog << "Randomly assign initial messages!\n";
         }
@@ -322,6 +325,15 @@ int main(int argc, char const *argv[]) {
     int_vec_t beliefs;
     // Note that we will read the beliefs file anyway; although there could be no such file, it will be okay.
     load_beliefs(beliefs, beliefs_path);
+
+
+    // The labels of certain nodes can be set fixed here.
+    if (var_map.count("fixed_nodes") > 0) {
+        beliefs.resize(true_conf.size(), -1);
+        for (auto vtx: fixed_nodes) {
+            beliefs[vtx] = true_conf[vtx];
+        }
+    }
 
     algorithm->init_messages(blockmodel, bp_messages_init_flag, beliefs, true_conf, engine);
     algorithm->init_special_needs(if_output_marginals);

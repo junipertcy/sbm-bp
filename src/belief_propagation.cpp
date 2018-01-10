@@ -1,6 +1,15 @@
 #include "belief_propagation.h"
 #include <cassert>
 
+static double entropy(double_vec_t dist, unsigned int size) noexcept {
+    double temp = 0.0;
+    for (unsigned int i = 0; i < size; ++i) {
+        if (dist[i] > 0) {
+            temp -= dist[i] * log(dist[i]);// log: natural logarithm
+        }
+    }
+    return temp;
+};
 
 void belief_propagation::learning(const blockmodel_t &blockmodel,
                                   const bp_blockmodel_state &state,
@@ -21,7 +30,7 @@ void belief_propagation::learning(const blockmodel_t &blockmodel,
         compute_na_expect();
         compute_cab_expect();
 
-        double fnew = compute_f();
+        double fnew = compute_free_energy();
 
         fdiff = fabs(fnew - fold);
         fold = fnew;
@@ -74,11 +83,18 @@ void belief_propagation::inference(const blockmodel_t &blockmodel,
 
     expand_bp_params(state);
     int niter = converge(conv_crit, time_conv, dumping_rate, engine);
-    double f = compute_f();
+    double f = compute_free_energy();
     double e = compute_entropy();
     std::cout << e << " " << f << " " << compute_overlap() << " " << niter << " \n";
     if (if_output_marginals_) {
+        // This outputs the vertex marginals when BP is converged.
+        // The marginal distribution can be used to compute the mean-field entropy
+        // AND
+        // the entropy of the average conditional distribution, i.e. margEntropy, or H(v).
         output_mat<double_mat_t>(real_psi_, std::cout);
+        for (unsigned int v = 0; v < N_ ; ++v) {
+            std::clog << "Node-" << v << "; margEntropy H(v) is " << entropy(real_psi_[v], Q_) << "\n";
+        }
     }
 }
 
@@ -725,7 +741,7 @@ double belief_propagation::compute_entropy_non_edge() noexcept {
 }
 
 
-double belief_propagation::compute_f() noexcept {
+double belief_propagation::compute_free_energy() noexcept {
     double f_site = -compute_f_site();  // ~eq.29
     double f_link = compute_f_edge();  // ~eq. 30
     double f_non_edge = compute_f_non_edge();  // ~eq. 31
@@ -1052,6 +1068,11 @@ double belief_propagation::norm_m_at_i(unsigned int i, double dumping_rate) noex
     }
 
     return mymaxdiff;
+}
+
+double belief_propagation::get_marginal_entropy() noexcept {
+    // TODO
+    return 0.;
 }
 
 

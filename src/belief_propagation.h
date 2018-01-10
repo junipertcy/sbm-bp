@@ -12,6 +12,8 @@
 #include "blockmodel.h"
 #include "output_functions.h"
 
+static double entropy(double_vec_t dist, unsigned int size) noexcept;
+
 
 class belief_propagation {
 protected:
@@ -59,7 +61,6 @@ protected:
     double_vec_t _mmap_total_;  // renamed from normtot_psi_
     double_mat_t _mmap_q_nb_;  // renamed from psii_iter_
     double_mat_t psii_;
-
 
     // the marginal probability of node i (in N)'s neighbor j (in neighbor[i]) at block q (in Q), normalized
     double_tensor_t mmap_;  // message_map, renamed from psi
@@ -134,11 +135,13 @@ public:
 
     void set_beta(double beta) noexcept;
 
-    double compute_f() noexcept;
+    double compute_free_energy() noexcept;
 
     double compute_entropy() noexcept;
 
     double compute_overlap() noexcept;
+
+    double get_marginal_entropy() noexcept;
 
     /// EM methods will be listed here!!!
 

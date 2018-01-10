@@ -30,6 +30,7 @@ make
 
 The binaries are built in `bin/`.
 
+## Usage
 ### Inference
 ```commandline
 bin/bp -l dataset/N_1000-Q_2-method_cab_ec-eps_0.1-c_3.0.edgelist -n 500 500 --pa 0.5 0.5 --cab 3.63 2.36 3.63 -t 1000 -i 0 --deg_corr_flag 0 -m infer

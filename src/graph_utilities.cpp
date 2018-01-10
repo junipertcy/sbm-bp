@@ -39,7 +39,6 @@ bool load_confs(uint_vec_t & beliefs, const std::string beliefs_path) noexcept
     return true;
 }
 
-
 bool load_edge_list(edge_list_t & edge_list, const std::string edge_list_path) noexcept
 {
     edge_list.clear();
