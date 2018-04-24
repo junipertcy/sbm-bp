@@ -19,7 +19,7 @@ public:
                  unsigned int Q,
                  unsigned int N,
                  unsigned int deg_corr_flag,
-                 adj_list_t *adj_list_ptr);
+                 const adj_list_t *adj_list_ptr);
 
     /*
      * Note that we treat these input variables as first-class citizens for the blockmodel
@@ -31,46 +31,47 @@ public:
      *
      */
 
-    unsigned int get_N() const;
+    unsigned int get_N() const noexcept;
 
-    unsigned int get_Q() const;
+    unsigned int get_Q() const noexcept;
 
-    unsigned int get_E() const;
+    unsigned int get_E() const noexcept;
 
-    unsigned int get_deg_corr_flag() const;
+    unsigned int get_deg_corr_flag() const noexcept;
 
-    adj_list_t *get_adj_list_ptr() const;
+    const adj_list_t* get_adj_list_ptr() const noexcept;
 
-    uint_mat_t get_m() const;
+    const uint_mat_t* get_m() const noexcept;
 
     /// BP
-    unsigned int get_graph_max_degree() const;
+    unsigned int get_graph_max_degree() const noexcept;
 
-    void shuffle(std::mt19937 &engine);
+    void shuffle(std::mt19937 &engine) noexcept;
 
-    int_vec_t get_k(unsigned int vertex) const;
+    int_vec_t get_k(unsigned int vertex) const noexcept;
 
-    bool are_connected(unsigned int vertex_a, unsigned int vertex_b) const;
+    bool are_connected(unsigned int vertex_a, unsigned int vertex_b) const noexcept;
 
-    int_vec_t get_size_vector() const;
+    int_vec_t get_size_vector() const noexcept;
 
-    int_vec_t get_degree_size_vector() const;
+    int_vec_t get_degree_size_vector() const noexcept;
 
-    int_vec_t get_degree() const;
+    int_vec_t get_degree() const noexcept;
 
-    uint_vec_t get_memberships() const;
+    uint_vec_t get_memberships() const noexcept;
 
 
-    double get_entropy_from_degree_correction() const;
+    double get_entropy_from_degree_correction() const noexcept;
 
 private:
     /// State variable
-    adj_list_t *adj_list_ptr_;
+    const adj_list_t *adj_list_ptr_;
     int_mat_t k_;
     uint_mat_t p_;
     int_vec_t n_;
     int_vec_t deg_n_;
     int_vec_t deg_;
+    uint_mat_t m_;
     uint_vec_t memberships_;
     unsigned int num_edges_;
     unsigned int graph_max_degree_;
@@ -82,11 +83,12 @@ private:
     std::uniform_int_distribution<> random_node_;
 
     /* Compute the degree matrix from scratch. */
-    void compute_k();
+    void compute_k() noexcept;
+    void compute_m() noexcept;
 
-    void compute_bp_params_from_memberships();
+    void compute_bp_params_from_memberships() noexcept;
 
-    uint_mat_t compute_e_rs();
+    uint_mat_t compute_e_rs() noexcept;
 
     // BP
     double_mat_t cab_;
@@ -100,12 +102,12 @@ private:
 };
 
 /* parameters for bp inference and learning */
-bp_blockmodel_state bp_param_from_rand(const blockmodel_t &blockmodel, std::mt19937 &engine);
+bp_blockmodel_state bp_param_from_rand(const blockmodel_t &blockmodel, std::mt19937 &engine) noexcept;
 
-bp_blockmodel_state bp_param_from_epsilon_c(const blockmodel_t &blockmodel, double epsilon, double c);
+bp_blockmodel_state bp_param_from_epsilon_c(const blockmodel_t &blockmodel, double epsilon, double c) noexcept;
 
-bp_blockmodel_state bp_param_from_direct(const blockmodel_t &blockmodel, double_vec_t pa, double_vec_t cab);
+bp_blockmodel_state bp_param_from_direct(const blockmodel_t &blockmodel, double_vec_t pa, double_vec_t cab) noexcept;
 
-bp_blockmodel_state bp_param_from_file(const blockmodel_t &blockmodel, std::string cab_file);
+bp_blockmodel_state bp_param_from_file(const blockmodel_t &blockmodel, std::string cab_file) noexcept;
 
 #endif //BP_SELECTION_BLOCKMODEL_H

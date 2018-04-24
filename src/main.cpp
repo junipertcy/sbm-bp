@@ -75,7 +75,7 @@ int main(int argc, char const *argv[]) {
     double_vec_t pa;
     double_vec_t cab;
 
-    bool if_output_marginals = false;
+    bool output_marginals = false;
 
     /// Setting cab and pa; case III – read from file
     std::string cab_file;
@@ -136,7 +136,7 @@ int main(int argc, char const *argv[]) {
             ("pa", po::value<double_vec_t>(&pa)->multitoken(), "pa vector.\n")
             ("cab", po::value<double_vec_t>(&cab)->multitoken(), "cab vector.\n")
 
-            ("if_output_marginals", "whether output marginals in the infer mode")
+            ("marginals", "whether output marginals in the infer mode")
 
 
             ("mode,m", po::value<std::string>(&mode), "Mode for the algorithm; valid values: infer | learn.")
@@ -218,8 +218,8 @@ int main(int argc, char const *argv[]) {
         }
     }
 
-    if (var_map.count("if_output_marginals") > 0) {
-        if_output_marginals = true;
+    if (var_map.count("marginals") > 0) {
+        output_marginals = true;
     }
 
     if (var_map.count("randomize") > 0) {
@@ -293,7 +293,7 @@ int main(int argc, char const *argv[]) {
     }
 
     // Now, initiate the blockmodel instance
-    blockmodel_t blockmodel(memberships_init, Q, adj_list.size(), deg_corr_flag, &adj_list);
+    blockmodel_t blockmodel(memberships_init, Q, (unsigned) adj_list.size(), deg_corr_flag, &adj_list);
     memberships_init.clear();
 
     if (memberships_randomize) {
@@ -318,7 +318,7 @@ int main(int argc, char const *argv[]) {
     std::unique_ptr<belief_propagation> algorithm;
     if (mode == "learn") {
         algorithm = std::make_unique<bp_basic>();
-    } else {
+    } else if (mode == "infer") {
         algorithm = std::make_unique<bp_conditional>();
     }
 
@@ -336,7 +336,7 @@ int main(int argc, char const *argv[]) {
     }
 
     algorithm->init_messages(blockmodel, bp_messages_init_flag, beliefs, true_conf, engine);
-    algorithm->init_special_needs(if_output_marginals);
+    algorithm->init_special_needs(output_marginals);
     algorithm->set_beta(beta);
 
     beliefs.clear();

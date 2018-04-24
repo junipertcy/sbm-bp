@@ -8,7 +8,7 @@ blockmodel_t::blockmodel_t(const uint_vec_t &memberships,
                            unsigned int Q,
                            unsigned int N,
                            unsigned int deg_corr_flag,
-                           adj_list_t *adj_list_ptr) :
+                           const adj_list_t *adj_list_ptr) :
 
         random_block_(0, Q - 1),
         random_node_(0, N - 1) {
@@ -24,8 +24,8 @@ blockmodel_t::blockmodel_t(const uint_vec_t &memberships,
 
     unsigned int deg_at_j_ = 0;
     double log_factorial = 0;
-
-    for (unsigned int j = 0; j < memberships.size(); ++j) {
+    auto n = (unsigned) memberships.size();
+    for (unsigned int j = 0; j < n; ++j) {
         ++n_[memberships[j]];
         deg_at_j_ = 0;
         for (auto nb = adj_list_ptr_->at(j).begin(); nb != adj_list_ptr_->at(j).end(); ++nb) {
@@ -38,7 +38,7 @@ blockmodel_t::blockmodel_t(const uint_vec_t &memberships,
         }
         ++deg_n_[deg_at_j_];
     }
-    for (unsigned int degree = 0; degree < memberships.size(); ++degree) {
+    for (unsigned int degree = 0; degree < n; ++degree) {
         if (degree != 0) {
             log_factorial += std::log(degree);
         }
@@ -48,65 +48,52 @@ blockmodel_t::blockmodel_t(const uint_vec_t &memberships,
     compute_k();
 }
 
-adj_list_t *blockmodel_t::get_adj_list_ptr() const {
+const adj_list_t* blockmodel_t::get_adj_list_ptr() const noexcept {
     return adj_list_ptr_;
 }
 
-int_vec_t blockmodel_t::get_k(unsigned int vertex) const { return k_[vertex]; }
+int_vec_t blockmodel_t::get_k(unsigned int vertex) const noexcept { return k_[vertex]; }
 
-bool blockmodel_t::are_connected(unsigned int vertex_a, unsigned int vertex_b) const {
+bool blockmodel_t::are_connected(unsigned int vertex_a, unsigned int vertex_b) const noexcept {
     if (adj_list_ptr_->at(vertex_a).find(vertex_b) != adj_list_ptr_->at(vertex_a).end()) {
         return true;
     }
     return false;
 }
 
-int_vec_t blockmodel_t::get_size_vector() const { return n_; }
+int_vec_t blockmodel_t::get_size_vector() const noexcept { return n_; }
 
-int_vec_t blockmodel_t::get_degree_size_vector() const { return deg_n_; }
+int_vec_t blockmodel_t::get_degree_size_vector() const noexcept { return deg_n_; }
 
-int_vec_t blockmodel_t::get_degree() const { return deg_; }
+int_vec_t blockmodel_t::get_degree() const noexcept { return deg_; }
 
-uint_vec_t blockmodel_t::get_memberships() const { return memberships_; }
+uint_vec_t blockmodel_t::get_memberships() const noexcept { return memberships_; }
 
-uint_mat_t blockmodel_t::get_m() const {
-    uint_mat_t m(get_Q(), uint_vec_t(get_Q(), 0));
-    for (auto vertex = 0; vertex < adj_list_ptr_->size(); ++vertex) {
-        for (auto neighbour = adj_list_ptr_->at(vertex).begin();
-             neighbour != adj_list_ptr_->at(vertex).end(); ++neighbour) {
-            ++m[memberships_[vertex]][memberships_[*neighbour]];
-        }
-    }
-    for (unsigned int r = 0; r < get_Q(); ++r) {
-        for (unsigned int s = 0; s < get_Q(); ++s) {
-            m[r][s] /= 2;  // edges are counted twice (the adj_list is symmetric)
-            m[r][s] = m[s][r];  // symmetrize m matrix.
-        }
-    }
-    return m;
+const uint_mat_t *blockmodel_t::get_m() const noexcept {
+    return &m_;
 }
 
-unsigned int blockmodel_t::get_N() const { return unsigned(int(memberships_.size())); }
+unsigned int blockmodel_t::get_N() const noexcept { return unsigned(int(memberships_.size())); }
 
-unsigned int blockmodel_t::get_Q() const { return unsigned(int(n_.size())); }
+unsigned int blockmodel_t::get_Q() const noexcept { return unsigned(int(n_.size())); }
 
 
-unsigned int blockmodel_t::get_E() const { return num_edges_; }
+unsigned int blockmodel_t::get_E() const noexcept { return num_edges_; }
 
-unsigned int blockmodel_t::get_deg_corr_flag() const { return deg_corr_flag_; }
+unsigned int blockmodel_t::get_deg_corr_flag() const noexcept { return deg_corr_flag_; }
 
-double blockmodel_t::get_entropy_from_degree_correction() const { return entropy_from_degree_correction_; }
+double blockmodel_t::get_entropy_from_degree_correction() const noexcept { return entropy_from_degree_correction_; }
 
 /// BP
-unsigned int blockmodel_t::get_graph_max_degree() const { return graph_max_degree_; }
+unsigned int blockmodel_t::get_graph_max_degree() const noexcept { return graph_max_degree_; }
 
-void blockmodel_t::shuffle(std::mt19937 &engine) {
+void blockmodel_t::shuffle(std::mt19937 &engine) noexcept {
     std::shuffle(memberships_.begin(), memberships_.end(), engine);
     compute_k();
 }
 
 
-void blockmodel_t::compute_k() {
+void blockmodel_t::compute_k() noexcept {
     k_.clear();
     k_.resize(adj_list_ptr_->size());
     for (unsigned int i = 0; i < adj_list_ptr_->size(); ++i) {
@@ -117,14 +104,35 @@ void blockmodel_t::compute_k() {
     }
 }
 
-void blockmodel_t::compute_bp_params_from_memberships() {
+void blockmodel_t::compute_m() noexcept {
+    unsigned int q = get_Q();
+    auto n = (unsigned) adj_list_ptr_->size();
+    m_.clear();
+    m_.resize(q, uint_vec_t(q, 0));
+
+    for (unsigned int vertex = 0; vertex < n; ++vertex) {
+        for (auto neighbour = adj_list_ptr_->at(vertex).begin();
+             neighbour != adj_list_ptr_->at(vertex).end(); ++neighbour) {
+            ++m_[memberships_[vertex]][memberships_[*neighbour]];
+        }
+    }
+    for (unsigned int r = 0; r < q; ++r) {
+        for (unsigned int s = 0; s < q; ++s) {
+            m_[r][s] /= 2;  // edges are counted twice (the adj_list is symmetric)
+            m_[r][s] = m_[s][r];  // symmetrize m_ matrix.
+        }
+    }
+}
+
+void blockmodel_t::compute_bp_params_from_memberships() noexcept {
     /*
      * calculate cab_, pab_, na_ from scratch (currently left un-used)
      */
     cab_.clear();
     pab_.clear();
     pab_.resize(get_Q());
-    uint_mat_t _cab_ = get_m();  // now, this cab_ is the number of edges between group-a and group-b
+    compute_m();
+    uint_mat_t _cab_ = *get_m();  // now, this cab_ is the number of edges between group-a and group-b
 
     na_.clear();
     na_.resize(get_Q());
@@ -150,7 +158,7 @@ void blockmodel_t::compute_bp_params_from_memberships() {
 }
 
 // TODO: check this function, it could be wrong
-uint_mat_t blockmodel_t::compute_e_rs() {
+uint_mat_t blockmodel_t::compute_e_rs() noexcept {
     p_.clear();
     p_.resize(this->n_.size());
     for (unsigned int i = 0; i < n_.size(); ++i)  // this goes from i=0 to i=9;
@@ -169,7 +177,7 @@ uint_mat_t blockmodel_t::compute_e_rs() {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Non class methods
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-bp_blockmodel_state bp_param_from_rand(const blockmodel_t &blockmodel, std::mt19937 &engine) {
+bp_blockmodel_state bp_param_from_rand(const blockmodel_t &blockmodel, std::mt19937 &engine) noexcept {
     std::clog << "in bp_param_from_rand" << "\n";
 
     bp_blockmodel_state state;
@@ -226,7 +234,7 @@ bp_blockmodel_state bp_param_from_rand(const blockmodel_t &blockmodel, std::mt19
     return state;
 }
 
-bp_blockmodel_state bp_param_from_epsilon_c(const blockmodel_t &blockmodel, double epsilon, double c) {
+bp_blockmodel_state bp_param_from_epsilon_c(const blockmodel_t &blockmodel, double epsilon, double c) noexcept {
     unsigned int N = blockmodel.get_N();
     unsigned int Q = blockmodel.get_Q();
 
@@ -271,7 +279,7 @@ bp_blockmodel_state bp_param_from_epsilon_c(const blockmodel_t &blockmodel, doub
     return state;
 }
 
-bp_blockmodel_state bp_param_from_direct(const blockmodel_t &blockmodel, double_vec_t pa, double_vec_t cab) {
+bp_blockmodel_state bp_param_from_direct(const blockmodel_t &blockmodel, double_vec_t pa, double_vec_t cab) noexcept {
     unsigned int N = blockmodel.get_N();
     unsigned int Q = blockmodel.get_Q();
 

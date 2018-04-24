@@ -47,7 +47,7 @@ protected:
     double_vec_t _real_psi_q_;  // renamed from pom_psi
 
     double_vec_t _diff_real_psi_q; // temporary variable to do numerical differential
-    double _diff_beta = 1.000001; // temporary variable to do numerical differential
+    const double _diff_beta = 1.000001; // temporary variable to do numerical differential
 
     double_vec_t h_;
     double_vec_t diff_h_;
@@ -69,11 +69,10 @@ protected:
     const double EPS = 1.0e-50;
 
     // special needs
-    bool if_output_marginals_;
+    bool marginals_;
 
     // EM_learning
     void learning_step(float learning_rate) noexcept;
-
 
     void clean_mmap_total_at_node_i_(unsigned int node_idx) noexcept;
 
@@ -150,19 +149,28 @@ private:
 
     void compute_na_expect() noexcept;
 
-    double compute_f_site() noexcept;
+    double compute_free_energy_site() noexcept;
 
-    double compute_f_edge() noexcept;
+    double compute_free_energy_edge() noexcept;
 
-    double compute_f_non_edge() noexcept;
+    double compute_free_energy_nonedge() noexcept;
 
     double compute_entropy_site() noexcept;
 
     double compute_entropy_edge() noexcept;
 
-    double compute_entropy_non_edge() noexcept;
+    double compute_entropy_nonedge() noexcept;
 
     double compute_e_nishimori() noexcept;
+
+    // in `converge` function
+    double maxdiffm_ = 0.;
+
+    // in `compute_entropy` functions
+    double numerator_ = 0;
+    double denominator_ = 0.;
+    double a_ = 0;
+    double b_ = 0;
 
 };
 
