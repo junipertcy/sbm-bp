@@ -83,11 +83,29 @@ void belief_propagation::inference(const blockmodel_t &blockmodel,
 
     expand_bp_params(state);
     int niter = converge(conv_crit, time_conv, dumping_rate, engine);
+
+
+    for (unsigned int i = 0; i < N_; ++i) {
+        mutual_info_[i] = marg_ent_[i] - cond_ent_[i];
+    }
+//    std::clog << "(mutual_info_, marg_ent_, cond_ent_) = " << mutual_info_[1] << ", " << marg_ent_[1] << ", " << cond_ent_[1] << "\n";
+    output_vec<double_vec_t>(cond_ent_, std::cout);
+
     double f = compute_free_energy();
     double e = compute_entropy();
-
+//    double e = 0;
     std::clog << "entropy | free_energy | overlap | niter \n";
     std::cout << e << " " << f << " " << compute_overlap() << " " << niter << " \n";
+
+//    output_vec(mutual_info_, std::clog);
+//    std::clog << "-----\n";
+//    output_vec(marg_ent_, std::clog);
+//    std::clog << "-----\n";
+
+//    output_vec(cond_ent_, std::clog);
+//    std::clog << "-----\n";
+//    output_vec(free_ene_, std::clog);
+
     if (marginals_) {
         // This outputs the vertex marginals when BP is converged.
         // The marginal distribution can be used to compute the mean-field entropy
@@ -243,6 +261,12 @@ void belief_propagation::bp_allocate(const blockmodel_t &blockmodel) noexcept {
     h_.resize(Q_);
     diff_h_.resize(Q_);
 
+    // conditional entropies
+    cond_ent_.resize(N_, 0.);
+    marg_ent_.resize(N_, 0.);
+    mutual_info_.resize(N_, 0.);
+    free_ene_.resize(N_, 0.);
+
     /// temporary variables to ensure normalization
     _real_psi_q_.resize(Q_);
     _diff_real_psi_q.resize(Q_);
@@ -279,7 +303,6 @@ void belief_propagation::bp_allocate(const blockmodel_t &blockmodel) noexcept {
     field_iter_.resize(graph_max_degree);
     _mmap_total_.resize(graph_max_degree);
 
-    psii_.resize(Q_);
     real_psi_.resize(N_);
     for (unsigned int i = 0; i < N_; i++) {
         real_psi_[i].resize(Q_);
@@ -405,7 +428,7 @@ int belief_propagation::converge(float bp_err,
             double diffm = -1;
             while (diffm == -1) {
                 auto i = unsigned(int(random_real(engine) * N_));   // TODO: unify the expression
-
+//                std::clog << "now updating messages to node " << i << "... \n";
                 if (adj_list_ptr_->at(i).size() >= LARGE_DEGREE) {
                     diffm = bp_iter_update_psi_large_degree(i, dumping_rate);
                 } else {
@@ -416,8 +439,27 @@ int belief_propagation::converge(float bp_err,
                 maxdiffm_ = diffm;
             }
         }
+        compute_entropy();
+        std::clog << "cond_ent_ @ step: " << iter_time << "::\n";
+//        std::clog << "1: " << cond_ent_[1]/(iter_time + 1.) << "; 2578: " << cond_ent_[2578]/(iter_time + 1.) << "; 3572: " << cond_ent_[3572]/(iter_time + 1.) << "; 4318: " << cond_ent_[4318]/(iter_time + 1.) << "\n";
+//        output_mat(mmap_[1], std::clog);
+//        std::clog << "---\n";
+//        output_vec(graph_neis_[1], std::clog);
+//        std::clog << "===\n";
+        for (unsigned int i = 0; i < N_; ++i) {
+//            std::clog << "(" << i << ")-";
+//            output_vec(graph_neis_[i], std::clog);
+        }
+//        std::clog << "entropy: " << compute_entropy() << "\n";
         if (maxdiffm_ < bp_err) {
-            std::clog << "End-of-BP: maxdiffm (" << maxdiffm_ << ") < bp_err (" << bp_err << ")\n";
+            std::clog << "End-of-BP: maxdiffm (" << maxdiffm_ << ") < bp_err (" << bp_err << "); iter_times = " << iter_time + 1 << "\n";
+
+            // take the average of the conditional entropy
+            for (unsigned int i = 0; i < cond_ent_.size(); ++i) {
+                cond_ent_[i] /= (iter_time + 1.);
+                free_ene_[i] /= (iter_time + 1.);
+            }
+            compute_marg_entropy();
             // TODO: put them as __private__ variable
             // int bp_last_conv_time = iter_time;
             // double bp_last_diff = maxdiffm;
@@ -459,8 +501,8 @@ double belief_propagation::compute_free_energy_site() noexcept {
 
     for (unsigned int i = 0; i < N_; ++i) {
         const double di = adj_list_ptr_->at(i).size();
-        double _rescaling_param_ = -100000.;  // Quite ugly, 0 should be good...
-        double _diff_rescaling_param_ = -100000.;
+        double _rescaling_param_ = -1.;  // Quite ugly, 0 should be good...
+        double _diff_rescaling_param_ = -1.;
 
         for (unsigned int q = 0; q < Q_; ++q) {
             a_ = 0.;
@@ -511,15 +553,15 @@ double belief_propagation::compute_free_energy_site() noexcept {
         _norm_scaling_param_ = _rescaling_param_ + std::log(_norm_scaling_param_);
         _diff_norm_scaling_param_ = _diff_rescaling_param_ + std::log(_diff_norm_scaling_param_);
 
-        f_site += _norm_scaling_param_;
-        _diff_f_site += _diff_norm_scaling_param_;
+        f_site += _norm_scaling_param_ / N_;
+        _diff_f_site += _diff_norm_scaling_param_ / N_;
 //        std::clog << (_diff_norm_scaling_param_ - _norm_scaling_param_) / (_diff_beta - beta_) / N_ << ",";
 //        std::clog << "(Correct) Z_" << i << ": " << std::exp(_norm_scaling_param_) << "\n";
-    }
-    f_site /= N_;
-    _diff_f_site /= N_;
+        free_ene_[i] += -_norm_scaling_param_ / N_;
 
-//    std::clog << "the numerical entropy is " << (_diff_f_site - f_site) / (_diff_beta - beta_) << "\n";
+    }
+
+    std::clog << "the numerical entropy (site) is " << (_diff_f_site - f_site) / (_diff_beta - beta_) << "\n";
 
     return -f_site;
 }
@@ -582,10 +624,11 @@ double belief_propagation::compute_entropy_site() noexcept {
         }
 //        std::clog << "Anaytical Z_" << i << ": " << denominator_ << "\n";
 //        std::clog << numerator_ << " , " << denominator_ << "\n";
-        e_site += numerator_ / denominator_;
+        e_site += numerator_ / denominator_ / N_;
+        cond_ent_[i] += numerator_ / denominator_ / N_;
+//        std::clog << "node entropy [" << i << "] = " << numerator_ / denominator_ / N_ << "\n";
 //        std::clog << numerator_ / denominator_ / N_ << ",";
     }
-    e_site /= N_;
 //    output_mat(cab_, std::clog);
     return e_site;
 }
@@ -635,14 +678,13 @@ double belief_propagation::compute_free_energy_edge() noexcept {
                     }
                 }
             }
-            f_link += std::log(norm_L);
-            _diff_f_link += std::log(_diff_norm_L);
+            // READ the paper! It counts for all edges, but in our calculation, we did it twice!
+            f_link += std::log(norm_L) / 2. / N_;
+            _diff_f_link += std::log(_diff_norm_L) / 2. / N_;
+            free_ene_[i] += std::log(norm_L) / 2. / N_;
         }
     }
-    f_link /= 2. * N_;  // READ the paper! It counts for all edges, but in our calculation, we did it twice!
-    _diff_f_link /= 2. * N_;
-//    std::clog << "the numerical entropy (edge) is " << (_diff_f_link-f_link) / (_diff_beta - beta_) << "\n";
-
+    std::clog << "the numerical entropy (edge) is " << (_diff_f_link-f_link) / (_diff_beta - beta_) << "\n";
 
     return f_link;
 }
@@ -701,10 +743,11 @@ double belief_propagation::compute_entropy_edge() noexcept {
                     }
                 }
             }
-            s_link += numerator_ / denominator_;
+            s_link += numerator_ / denominator_ / 2. / N_;
+            cond_ent_[i] += numerator_ / denominator_ / 2. / N_;
+//            std::clog << "edge entropy [" << i << "] = " << numerator_ / denominator_ / 2. / N_ << "\n";
         }
     }
-    s_link /= 2. * N_;
 
     return s_link;
 }
@@ -766,15 +809,17 @@ double belief_propagation::compute_free_energy_nonedge() noexcept {
 //    log_f_non_edge_ /= 2. * N_;
 //    _diff_log_f_non_edge_ /= 2. * N_;
 //
-//    std::clog << "the numerical entropy (NON-edge) is " << (_diff_log_f_non_edge_-log_f_non_edge_) / (_diff_beta - beta_) << "\n";
+    std::clog << "the numerical entropy (NON-edge) is " << (_diff_log_f_non_edge_-log_f_non_edge_) / (_diff_beta - beta_) << "\n";
     return log_f_non_edge_;
 }
 
 double belief_propagation::compute_entropy_nonedge() noexcept {
     double f_non_edge = 0;
     for (unsigned int i = 0; i < N_; ++i) {
+        auto nb_of_i = adj_list_ptr_->at(i);
         for (unsigned int l = 0; l < N_; ++l) {
-            if (std::find(graph_neis_[i].begin(), graph_neis_[i].end(), l) == graph_neis_[i].end()) {
+//            if (std::find(graph_neis_[i].begin(), graph_neis_[i].end(), l) == graph_neis_[i].end()) {
+            if (nb_of_i.find(l) == nb_of_i.end()) {
                 numerator_ = 0.;
                 denominator_ = 0.;
                 // l is not a neighbor to i
@@ -790,7 +835,9 @@ double belief_propagation::compute_entropy_nonedge() noexcept {
                     }
                 }
                 if (numerator_ * denominator_ != 0) {
-                    f_non_edge += numerator_ / denominator_;
+                    f_non_edge += -numerator_ / denominator_ / 2. / N_;
+
+                    cond_ent_[i] += -numerator_ / denominator_ / 2. / N_;
                 } else {
                     // this could happen, esp. when epsilon is close to 0, where the network structure is strong
                     // then, real_psi_[i] has some zero components.
@@ -798,8 +845,7 @@ double belief_propagation::compute_entropy_nonedge() noexcept {
             }
         }
     }
-    f_non_edge /= 2. * N_;
-    return -f_non_edge;
+    return f_non_edge;
 }
 
 
@@ -815,11 +861,21 @@ double belief_propagation::compute_free_energy() noexcept {
 double belief_propagation::compute_entropy() noexcept {
     double e_site = compute_entropy_site();
     double e_link = compute_entropy_edge();
-    double e_non_edge = compute_entropy_nonedge();
+//    double e_non_edge = compute_entropy_nonedge();  // computing this term is slow
+    double e_non_edge = 0.;  // approx.: e_non_edge doesn't change much during the course of the BP algorithm.
     double total_e = (e_site + e_link + e_non_edge);
-    //std::clog << "(e_site, e_link, e_non_edge) = (" << e_site << ", " << e_link << ", " << e_non_edge << ") \n";
+    std::clog << "(total_e, e_site, e_link, e_non_edge) = (" << total_e << ", " << e_site << ", " << e_link << ", " << e_non_edge << ") \n";
     return total_e;
 }
+
+void belief_propagation::compute_marg_entropy() noexcept {
+    for (unsigned int i = 0; i < N_; ++i) {
+        for (unsigned int q = 0; q < Q_; ++q) {
+            marg_ent_[i] += -real_psi_[i][q] * std::log(real_psi_[i][q]);
+        }
+    }
+}
+
 
 double belief_propagation::compute_e_nishimori() noexcept {
     double e_nishimori = 0.;
@@ -886,14 +942,13 @@ double belief_propagation::bp_iter_update_psi_large_degree(unsigned int i,
 
     double maxpom_psi = -100000000.0;
     double xxx = -100000000.0;
-    auto n = adj_list_ptr_->at(i).size();
+    const auto n = adj_list_ptr_->at(i).size();
     for (unsigned int j = 0; j < n; ++j) {
         maxpom_psii_iter_[j] = xxx;
     }
     for (unsigned int q = 0; q < Q_; ++q) {
         a = 0.0;//log value
         // sum of all graphbors of i
-        n = adj_list_ptr_->at(i).size();
         for (unsigned int l = 0; l < n; ++l) {
             b = 0.0;
             unsigned int neighbor = graph_neis_[i][l];
@@ -929,7 +984,6 @@ double belief_propagation::bp_iter_update_psi_large_degree(unsigned int i,
     }
     for (unsigned int q = 0; q < Q_; ++q) {
         _real_psi_total_ += exp(_real_psi_q_[q] - maxpom_psi);
-        n = adj_list_ptr_->at(i).size();
         for (unsigned int l = 0; l < n; ++l) {
             _mmap_total_[l] += exp(_mmap_q_nb_[q][l] - maxpom_psii_iter_[l]);
         }
@@ -941,7 +995,6 @@ double belief_propagation::bp_iter_update_psi_large_degree(unsigned int i,
     // normalization
     for (unsigned int q = 0; q < Q_; ++q) {
         real_psi_[i][q] = exp(_real_psi_q_[q] - maxpom_psi) / _real_psi_total_;
-        n = adj_list_ptr_->at(i).size();
         for (unsigned int l = 0; l < n; ++l) {
             unsigned int i2 = graph_neis_[i][l];
             unsigned int l2 = graph_neis_inv_[i][l];
@@ -1059,13 +1112,13 @@ void belief_propagation::compute_cab_expect() noexcept {
 }
 
 void belief_propagation::sum_all_messages_to_i(unsigned int i) noexcept {
-    double di = adj_list_ptr_->at(i).size();
+    const double di = adj_list_ptr_->at(i).size();
+    const auto n = adj_list_ptr_->at(i).size();
     double a, b;
     _real_psi_total_ = 0.0;
 
     for (unsigned int q = 0; q < Q_; ++q) {
         a = 1.0;
-        auto n = adj_list_ptr_->at(i).size();
         for (unsigned int l = 0; l < n; ++l) {
 
             b = 0.0;
@@ -1099,8 +1152,7 @@ void belief_propagation::sum_all_messages_to_i(unsigned int i) noexcept {
         for (unsigned int l = 0; l < n; ++l) {
             if (field_iter_[l] < EPS) {  // to cure the problem that field_iter_[l] may be very small
                 double tmprob = 1.0;
-                auto nn = adj_list_ptr_->at(i).size();
-                for (unsigned int lx = 0; lx < nn; ++lx) {
+                for (unsigned int lx = 0; lx < n; ++lx) {
                     if (lx == l) {
                         continue;
                     }
@@ -1123,12 +1175,13 @@ void belief_propagation::sum_all_messages_to_i(unsigned int i) noexcept {
 double belief_propagation::norm_m_at_i(unsigned int i, double dumping_rate) noexcept {
     // normalization
     double mymaxdiff = -1;
+    const auto n = adj_list_ptr_->at(i).size();
     for (unsigned int q = 0; q < Q_; ++q) {
         real_psi_[i][q] = _real_psi_q_[q] / _real_psi_total_;
-        auto n = adj_list_ptr_->at(i).size();
-        if (n == 0) {
-            break;  // isolated nodes -->  we'll ask converge() to randomly select a new node.
-        }
+
+//        if (n == 0) {
+//            break;  // isolated nodes -->  we'll ask converge() to randomly select a new node.
+//        }
         for (unsigned int l = 0; l < n; ++l) {
             unsigned int i2 = graph_neis_[i][l];
             unsigned int l2 = graph_neis_inv_[i][l];
@@ -1148,12 +1201,6 @@ double belief_propagation::norm_m_at_i(unsigned int i, double dumping_rate) noex
 
     return mymaxdiff;
 }
-
-double belief_propagation::get_marginal_entropy() noexcept {
-    // TODO
-    return 0.;
-}
-
 
 double bp_basic::bp_iter_update_psi(unsigned int i, double dumping_rate) noexcept {
  /*

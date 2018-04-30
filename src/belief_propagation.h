@@ -60,7 +60,6 @@ protected:
     double_vec_t field_iter_;
     double_vec_t _mmap_total_;  // renamed from normtot_psi_
     double_mat_t _mmap_q_nb_;  // renamed from psii_iter_
-    double_mat_t psii_;
 
     // the marginal probability of node i (in N)'s neighbor j (in neighbor[i]) at block q (in Q), normalized
     double_tensor_t mmap_;  // message_map, renamed from psi
@@ -140,8 +139,6 @@ public:
 
     double compute_overlap() noexcept;
 
-    double get_marginal_entropy() noexcept;
-
     /// EM methods will be listed here!!!
 
 private:
@@ -161,6 +158,8 @@ private:
 
     double compute_entropy_nonedge() noexcept;
 
+    void compute_marg_entropy() noexcept;
+
     double compute_e_nishimori() noexcept;
 
     // in `converge` function
@@ -171,6 +170,12 @@ private:
     double denominator_ = 0.;
     double a_ = 0;
     double b_ = 0;
+
+    // collecting conditional entropies
+    double_vec_t cond_ent_;
+    double_vec_t marg_ent_;
+    double_vec_t mutual_info_;
+    double_vec_t free_ene_;
 
 };
 
