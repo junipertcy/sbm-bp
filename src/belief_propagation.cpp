@@ -138,6 +138,16 @@ void belief_propagation::inference(const blockmodel_t &blockmodel,
     output_vec(free_ene_, std::clog);
     std::clog << "bethe_ent_: \n";
     output_vec(bethe_ent_, std::clog);
+    std::clog << "--- --- --- --- \n";
+    std::clog << "--- --- --- --- \n";
+    std::clog << "free_ene_site_: \n";
+    output_vec(free_ene_site_, std::clog);
+    std::clog << "free_ene_edge_: \n";
+    output_vec(free_ene_edge_, std::clog);
+    std::clog << "bethe_ent_site_: \n";
+    output_vec(bethe_ent_site_, std::clog);
+    std::clog << "bethe_ent_edge_: \n";
+    output_vec(bethe_ent_edge_, std::clog);
 
     if (output_marginals_) {
         // This outputs the vertex marginals when BP is converged.
@@ -342,8 +352,10 @@ void belief_propagation::bp_allocate(const blockmodel_t &blockmodel) noexcept {
     bethe_ent_.resize(N_, 0.);
     marg_ent_.resize(N_, 0.);
     free_ene_.resize(N_, 0.);
-//    free_ene_site_.resize(N_, 0.);
-//    free_ene_edge_.resize(N_, 0.);
+    free_ene_site_.resize(N_, 0.);
+    free_ene_edge_.resize(N_, 0.);
+    bethe_ent_site_.resize(N_, 0.);
+    bethe_ent_edge_.resize(N_, 0.);
 
     /// temporary variables to ensure normalization
     _real_psi_q_.resize(Q_);
@@ -584,6 +596,7 @@ double belief_propagation::compute_free_energy_site(bool by_site) noexcept {
 //        std::clog << "(Correct) Z_" << i << ": " << std::exp(_norm_scaling_param_) << "\n";
         if (by_site) {
             free_ene_[i] += -_norm_scaling_param_ / N_;
+            free_ene_site_[i] += -_norm_scaling_param_ / N_;
         }
 
 
@@ -655,6 +668,7 @@ double belief_propagation::compute_entropy_site(bool by_site) noexcept {
         e_site += numerator_ / denominator_ / N_;
         if (by_site) {
             bethe_ent_[i] += numerator_ / denominator_ / N_;
+            bethe_ent_site_[i] += numerator_ / denominator_ / N_;
         }
 //        std::clog << "node entropy [" << i << "] = " << numerator_ / denominator_ / N_ << "\n";
 //        std::clog << numerator_ / denominator_ / N_ << ",";
@@ -713,6 +727,7 @@ double belief_propagation::compute_free_energy_edge(bool by_site) noexcept {
             _diff_f_link += std::log(_diff_norm_L) / 2. / N_;
             if (by_site) {
                 free_ene_[i] += std::log(norm_L) / 2. / N_;
+                free_ene_edge_[i] += std::log(norm_L) / 2. / N_;
             }
         }
     }
@@ -778,6 +793,7 @@ double belief_propagation::compute_entropy_edge(bool by_site) noexcept {
             s_link += numerator_ / denominator_ / 2. / N_;
             if (by_site) {
                 bethe_ent_[i] += numerator_ / denominator_ / 2. / N_;
+                bethe_ent_edge_[i] += numerator_ / denominator_ / 2. / N_;
             }
 //            std::clog << "edge entropy [" << i << "] = " << numerator_ / denominator_ / 2. / N_ << "\n";
         }

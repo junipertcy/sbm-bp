@@ -183,6 +183,10 @@ private:
     double_vec_t bethe_ent_;  // Bethe entropy for each node
     double_vec_t marg_ent_;  // marginal entropy for the uncertainty of the labels for each node
     double_vec_t free_ene_;  // equilibrated Bethe free energy of each node
+    double_vec_t free_ene_site_;
+    double_vec_t free_ene_edge_;
+    double_vec_t bethe_ent_site_;
+    double_vec_t bethe_ent_edge_;
 
 };
 
