@@ -68,7 +68,11 @@ protected:
     const double EPS = 1.0e-50;
 
     // special needs
-    bool marginals_;
+    bool output_marginals_;
+    bool output_free_energy_;
+    bool output_weighted_free_energy_;
+    bool output_entropy_;
+    bool output_weighted_entropy_;
 
     // EM_learning
     void learning_step(float learning_rate) noexcept;
@@ -97,7 +101,11 @@ public:
                        const uint_vec_t &true_conf,
                        std::mt19937 &engine) noexcept;
 
-    void init_special_needs(bool if_output_marginals) noexcept;
+    void init_special_needs(bool if_output_marginals,
+                            bool if_output_free_energy,
+                            bool if_output_weighted_free_energy,
+                            bool if_output_entropy,
+                            bool if_output_weighted_entropy) noexcept;
 
     void bp_allocate(const blockmodel_t &blockmodel) noexcept;
 
@@ -133,9 +141,9 @@ public:
 
     void set_beta(double beta) noexcept;
 
-    double compute_free_energy() noexcept;
+    double compute_free_energy(bool by_site) noexcept;
 
-    double compute_entropy() noexcept;
+    double compute_entropy(bool by_site) noexcept;
 
     double compute_overlap() noexcept;
 
@@ -146,17 +154,17 @@ private:
 
     void compute_na_expect() noexcept;
 
-    double compute_free_energy_site() noexcept;
+    double compute_free_energy_site(bool by_site) noexcept;
 
-    double compute_free_energy_edge() noexcept;
+    double compute_free_energy_edge(bool by_site) noexcept;
 
-    double compute_free_energy_nonedge() noexcept;
+    double compute_free_energy_nonedge(bool by_site) noexcept;
 
-    double compute_entropy_site() noexcept;
+    double compute_entropy_site(bool by_site) noexcept;
 
-    double compute_entropy_edge() noexcept;
+    double compute_entropy_edge(bool by_site) noexcept;
 
-    double compute_entropy_nonedge() noexcept;
+    double compute_entropy_nonedge(bool by_site) noexcept;
 
     void compute_marg_entropy() noexcept;
 
@@ -171,11 +179,10 @@ private:
     double a_ = 0;
     double b_ = 0;
 
-    // collecting conditional entropies
-    double_vec_t cond_ent_;
-    double_vec_t marg_ent_;
-    double_vec_t mutual_info_;
-    double_vec_t free_ene_;
+    // collecting outputs
+    double_vec_t bethe_ent_;  // Bethe entropy for each node
+    double_vec_t marg_ent_;  // marginal entropy for the uncertainty of the labels for each node
+    double_vec_t free_ene_;  // equilibrated Bethe free energy of each node
 
 };
 

@@ -75,7 +75,12 @@ int main(int argc, char const *argv[]) {
     double_vec_t pa;
     double_vec_t cab;
 
+    /// for init_special_needs
     bool output_marginals = false;
+    bool output_free_energy = false;
+    bool output_weighted_free_energy = false;
+    bool output_entropy = false;
+    bool output_weighted_entropy = false;
 
     /// Setting cab and pa; case III – read from file
     std::string cab_file;
@@ -137,6 +142,10 @@ int main(int argc, char const *argv[]) {
             ("cab", po::value<double_vec_t>(&cab)->multitoken(), "cab vector.\n")
 
             ("marginals", "whether output marginals in the infer mode")
+            ("free_energy", "Output free_energy in the infer mode")
+            ("weighted_free_energy", "Output weighted_free_energy in the infer mode")
+            ("entropy", "Output entropy in the infer mode")
+            ("weighted_entropy", "Output weighted_entropy in the infer mode")
 
 
             ("mode,m", po::value<std::string>(&mode), "Mode for the algorithm; valid values: infer | learn.")
@@ -220,6 +229,18 @@ int main(int argc, char const *argv[]) {
 
     if (var_map.count("marginals") > 0) {
         output_marginals = true;
+    }
+    if (var_map.count("free_energy") > 0) {
+        output_free_energy = true;
+    }
+    if (var_map.count("weighted_free_energy") > 0) {
+        output_weighted_free_energy = true;
+    }
+    if (var_map.count("entropy") > 0) {
+        output_entropy = true;
+    }
+    if (var_map.count("weighted_entropy") > 0) {
+        output_weighted_entropy = true;
     }
 
     if (var_map.count("randomize") > 0) {
@@ -336,7 +357,9 @@ int main(int argc, char const *argv[]) {
     }
 
     algorithm->init_messages(blockmodel, bp_messages_init_flag, beliefs, true_conf, engine);
-    algorithm->init_special_needs(output_marginals);
+
+    algorithm->init_special_needs(output_marginals, output_free_energy, output_weighted_free_energy, output_entropy, output_weighted_entropy);
+
     algorithm->set_beta(beta);
 
     beliefs.clear();

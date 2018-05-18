@@ -30,7 +30,7 @@ void belief_propagation::learning(const blockmodel_t &blockmodel,
         compute_na_expect();
         compute_cab_expect();
 
-        double fnew = compute_free_energy();
+        double fnew = compute_free_energy(false);
 
         fdiff = fabs(fnew - fold);
         fold = fnew;
@@ -84,29 +84,62 @@ void belief_propagation::inference(const blockmodel_t &blockmodel,
     expand_bp_params(state);
     int niter = converge(conv_crit, time_conv, dumping_rate, engine);
 
+//    std::clog << "(marg_ent_, bethe_ent_) = " << marg_ent_[1] << ", " << bethe_ent_[1] << "\n";
+//    output_vec<double_vec_t>(bethe_ent_, std::cout);
 
-    for (unsigned int i = 0; i < N_; ++i) {
-        mutual_info_[i] = marg_ent_[i] - cond_ent_[i];
+//    double f = compute_free_energy();
+    if (output_entropy_) {
+        double e = compute_entropy(true);
+        output_vec<double_vec_t>(bethe_ent_, std::cout);
+        std::clog << "Bethe entropy | overlap | niter \n";
+        std::cout << e << " " << compute_overlap() << " " << niter << " \n";
+    } else if (output_free_energy_) {
+        double f = compute_free_energy(true);
+        output_vec<double_vec_t>(free_ene_, std::cout);
+        std::clog << "Bethe free energy | overlap | niter \n";
+        std::cout << f << " " << compute_overlap() << " " << niter << " \n";
+    } else if (output_weighted_free_energy_) {
+        compute_marg_entropy();
+        double f = compute_free_energy(true);
+        double_vec_t score;
+        score.resize(N_, 0.);
+        for (unsigned int idx = 0; idx < N_; ++idx) {
+            score[idx] = marg_ent_[idx] * free_ene_[idx];
+        }
+        output_vec<double_vec_t>(score, std::cout);
+        std::clog << "Weighted Bethe free energy | overlap | niter \n";
+        std::cout << f << " " << compute_overlap() << " " << niter << " \n";
+    } else if (output_weighted_entropy_) {
+        compute_marg_entropy();
+        double e = compute_entropy(true);
+        double_vec_t score;
+        score.resize(N_, 0.);
+        for (unsigned int idx = 0; idx < N_; ++idx) {
+            score[idx] = marg_ent_[idx] * bethe_ent_[idx];
+        }
+        output_vec<double_vec_t>(score, std::cout);
+        std::clog << "Weighted Bethe entropy | overlap | niter \n";
+        std::cout << e << " " << compute_overlap() << " " << niter << " \n";
+    } else {  // normal mode
+        double e = compute_entropy(true);
+        double f = compute_free_energy(true);
+//        output_vec<double_vec_t>(free_ene_, std::cout);
+        std::clog << "Bethe entropy | Bethe free energy | overlap | niter \n";
+        std::cout << e << " " << f << " " << compute_overlap() << " " << niter << " \n";
     }
-//    std::clog << "(mutual_info_, marg_ent_, cond_ent_) = " << mutual_info_[1] << ", " << marg_ent_[1] << ", " << cond_ent_[1] << "\n";
-    output_vec<double_vec_t>(cond_ent_, std::cout);
 
-    double f = compute_free_energy();
-    double e = compute_entropy();
-//    double e = 0;
-    std::clog << "entropy | free_energy | overlap | niter \n";
-    std::cout << e << " " << f << " " << compute_overlap() << " " << niter << " \n";
+//    output_vec<double_vec_t>(free_ene_, std::cout);
 
-//    output_vec(mutual_info_, std::clog);
-//    std::clog << "-----\n";
 //    output_vec(marg_ent_, std::clog);
 //    std::clog << "-----\n";
 
-//    output_vec(cond_ent_, std::clog);
-//    std::clog << "-----\n";
-//    output_vec(free_ene_, std::clog);
+//    output_vec(bethe_ent_, std::clog);
+    std::clog << "free_ene_: \n";
+    output_vec(free_ene_, std::clog);
+    std::clog << "bethe_ent_: \n";
+    output_vec(bethe_ent_, std::clog);
 
-    if (marginals_) {
+    if (output_marginals_) {
         // This outputs the vertex marginals when BP is converged.
         // The marginal distribution can be used to compute the mean-field entropy
         // AND
@@ -120,6 +153,42 @@ void belief_propagation::inference(const blockmodel_t &blockmodel,
             output_vec<>(adj_list_ptr_->at(v), std::clog);
         }
     }
+}
+
+int belief_propagation::converge(float bp_err,
+                                 unsigned int max_iter_time,
+                                 float dumping_rate,
+                                 std::mt19937 &engine) noexcept {
+    init_h();
+    for (int iter_time = 0; iter_time < max_iter_time; ++iter_time) {
+        maxdiffm_ = -1;
+        for (unsigned int iter_inter_time = 0; iter_inter_time < N_; ++iter_inter_time) {
+            double diffm = -1;
+            while (diffm == -1) {
+                auto i = unsigned(int(random_real(engine) * N_));   // TODO: unify the expression
+//                std::clog << "now updating messages to node " << i << "... \n";
+                if (adj_list_ptr_->at(i).size() >= LARGE_DEGREE) {
+                    diffm = bp_iter_update_psi_large_degree(i, dumping_rate);
+                } else {
+                    diffm = bp_iter_update_psi(i, dumping_rate);
+                }
+            }
+            if (diffm > maxdiffm_) {
+                maxdiffm_ = diffm;
+            }
+        }
+
+        if (maxdiffm_ < bp_err) {
+            std::clog << "End-of-BP: maxdiffm (" << maxdiffm_ << ") < bp_err (" << bp_err << "); iter_times = " << iter_time + 1 << "\n";
+
+            // TODO: put them as __private__ variable
+            // int bp_last_conv_time = iter_time;
+            // double bp_last_diff = maxdiffm;
+            return iter_time;
+        }
+    }
+    std::clog << "End-of-BP: to-few-BP-time; the _maxdiffm is " << maxdiffm_ << "\n";
+    return -1;
 }
 
 void belief_propagation::init_messages(const blockmodel_t &blockmodel,
@@ -244,8 +313,16 @@ void belief_propagation::init_messages(const blockmodel_t &blockmodel,
     }
 }
 
-void belief_propagation::init_special_needs(bool if_output_marginals) noexcept {
-    marginals_ = if_output_marginals;
+void belief_propagation::init_special_needs(bool if_output_marginals,
+                                            bool if_output_free_energy,
+                                            bool if_output_weighted_free_energy,
+                                            bool if_output_entropy,
+                                            bool if_output_weighted_entropy) noexcept {
+    output_marginals_ = if_output_marginals;
+    output_free_energy_ = if_output_free_energy;
+    output_weighted_free_energy_ = if_output_weighted_free_energy;
+    output_entropy_ = if_output_entropy;
+    output_weighted_entropy_ = if_output_weighted_entropy;
 }
 
 void belief_propagation::bp_allocate(const blockmodel_t &blockmodel) noexcept {
@@ -262,10 +339,11 @@ void belief_propagation::bp_allocate(const blockmodel_t &blockmodel) noexcept {
     diff_h_.resize(Q_);
 
     // conditional entropies
-    cond_ent_.resize(N_, 0.);
+    bethe_ent_.resize(N_, 0.);
     marg_ent_.resize(N_, 0.);
-    mutual_info_.resize(N_, 0.);
     free_ene_.resize(N_, 0.);
+//    free_ene_site_.resize(N_, 0.);
+//    free_ene_edge_.resize(N_, 0.);
 
     /// temporary variables to ensure normalization
     _real_psi_q_.resize(Q_);
@@ -417,59 +495,6 @@ void belief_propagation::compute_diff_h(double beta) noexcept {
     }
 }
 
-int belief_propagation::converge(float bp_err,
-                                 unsigned int max_iter_time,
-                                 float dumping_rate,
-                                 std::mt19937 &engine) noexcept {
-    init_h();
-    for (int iter_time = 0; iter_time < max_iter_time; ++iter_time) {
-        maxdiffm_ = -1;
-        for (unsigned int iter_inter_time = 0; iter_inter_time < N_; ++iter_inter_time) {
-            double diffm = -1;
-            while (diffm == -1) {
-                auto i = unsigned(int(random_real(engine) * N_));   // TODO: unify the expression
-//                std::clog << "now updating messages to node " << i << "... \n";
-                if (adj_list_ptr_->at(i).size() >= LARGE_DEGREE) {
-                    diffm = bp_iter_update_psi_large_degree(i, dumping_rate);
-                } else {
-                    diffm = bp_iter_update_psi(i, dumping_rate);
-                }
-            }
-            if (diffm > maxdiffm_) {
-                maxdiffm_ = diffm;
-            }
-        }
-        compute_entropy();
-        std::clog << "cond_ent_ @ step: " << iter_time << "::\n";
-//        std::clog << "1: " << cond_ent_[1]/(iter_time + 1.) << "; 2578: " << cond_ent_[2578]/(iter_time + 1.) << "; 3572: " << cond_ent_[3572]/(iter_time + 1.) << "; 4318: " << cond_ent_[4318]/(iter_time + 1.) << "\n";
-//        output_mat(mmap_[1], std::clog);
-//        std::clog << "---\n";
-//        output_vec(graph_neis_[1], std::clog);
-//        std::clog << "===\n";
-        for (unsigned int i = 0; i < N_; ++i) {
-//            std::clog << "(" << i << ")-";
-//            output_vec(graph_neis_[i], std::clog);
-        }
-//        std::clog << "entropy: " << compute_entropy() << "\n";
-        if (maxdiffm_ < bp_err) {
-            std::clog << "End-of-BP: maxdiffm (" << maxdiffm_ << ") < bp_err (" << bp_err << "); iter_times = " << iter_time + 1 << "\n";
-
-            // take the average of the conditional entropy
-            for (unsigned int i = 0; i < cond_ent_.size(); ++i) {
-                cond_ent_[i] /= (iter_time + 1.);
-                free_ene_[i] /= (iter_time + 1.);
-            }
-            compute_marg_entropy();
-            // TODO: put them as __private__ variable
-            // int bp_last_conv_time = iter_time;
-            // double bp_last_diff = maxdiffm;
-            return iter_time;
-        }
-    }
-    std::clog << "End-of-BP: to-few-BP-time; the _maxdiffm is " << maxdiffm_ << "\n";
-    return -1;
-}
-
 void belief_propagation::set_beta(double beta) noexcept {
     beta_ = beta;
 }
@@ -495,7 +520,7 @@ void belief_propagation::compute_na_expect() noexcept {
     }
 }
 
-double belief_propagation::compute_free_energy_site() noexcept {
+double belief_propagation::compute_free_energy_site(bool by_site) noexcept {
     double f_site = 0;
     double _diff_f_site = 0;
 
@@ -557,7 +582,10 @@ double belief_propagation::compute_free_energy_site() noexcept {
         _diff_f_site += _diff_norm_scaling_param_ / N_;
 //        std::clog << (_diff_norm_scaling_param_ - _norm_scaling_param_) / (_diff_beta - beta_) / N_ << ",";
 //        std::clog << "(Correct) Z_" << i << ": " << std::exp(_norm_scaling_param_) << "\n";
-        free_ene_[i] += -_norm_scaling_param_ / N_;
+        if (by_site) {
+            free_ene_[i] += -_norm_scaling_param_ / N_;
+        }
+
 
     }
 
@@ -566,7 +594,7 @@ double belief_propagation::compute_free_energy_site() noexcept {
     return -f_site;
 }
 
-double belief_propagation::compute_entropy_site() noexcept {
+double belief_propagation::compute_entropy_site(bool by_site) noexcept {
     double e_site = 0;
 
     for (unsigned int i = 0; i < N_; ++i) {
@@ -625,7 +653,9 @@ double belief_propagation::compute_entropy_site() noexcept {
 //        std::clog << "Anaytical Z_" << i << ": " << denominator_ << "\n";
 //        std::clog << numerator_ << " , " << denominator_ << "\n";
         e_site += numerator_ / denominator_ / N_;
-        cond_ent_[i] += numerator_ / denominator_ / N_;
+        if (by_site) {
+            bethe_ent_[i] += numerator_ / denominator_ / N_;
+        }
 //        std::clog << "node entropy [" << i << "] = " << numerator_ / denominator_ / N_ << "\n";
 //        std::clog << numerator_ / denominator_ / N_ << ",";
     }
@@ -633,7 +663,7 @@ double belief_propagation::compute_entropy_site() noexcept {
     return e_site;
 }
 
-double belief_propagation::compute_free_energy_edge() noexcept {
+double belief_propagation::compute_free_energy_edge(bool by_site) noexcept {
     double f_link = 0;
     double _diff_f_link = 0;
 
@@ -681,7 +711,9 @@ double belief_propagation::compute_free_energy_edge() noexcept {
             // READ the paper! It counts for all edges, but in our calculation, we did it twice!
             f_link += std::log(norm_L) / 2. / N_;
             _diff_f_link += std::log(_diff_norm_L) / 2. / N_;
-            free_ene_[i] += std::log(norm_L) / 2. / N_;
+            if (by_site) {
+                free_ene_[i] += std::log(norm_L) / 2. / N_;
+            }
         }
     }
     std::clog << "the numerical entropy (edge) is " << (_diff_f_link-f_link) / (_diff_beta - beta_) << "\n";
@@ -689,7 +721,7 @@ double belief_propagation::compute_free_energy_edge() noexcept {
     return f_link;
 }
 
-double belief_propagation::compute_entropy_edge() noexcept {
+double belief_propagation::compute_entropy_edge(bool by_site) noexcept {
 
     // TODO: check all degree-corrected terms
     double s_link = 0;
@@ -744,7 +776,9 @@ double belief_propagation::compute_entropy_edge() noexcept {
                 }
             }
             s_link += numerator_ / denominator_ / 2. / N_;
-            cond_ent_[i] += numerator_ / denominator_ / 2. / N_;
+            if (by_site) {
+                bethe_ent_[i] += numerator_ / denominator_ / 2. / N_;
+            }
 //            std::clog << "edge entropy [" << i << "] = " << numerator_ / denominator_ / 2. / N_ << "\n";
         }
     }
@@ -753,7 +787,7 @@ double belief_propagation::compute_entropy_edge() noexcept {
 }
 
 
-double belief_propagation::compute_free_energy_nonedge() noexcept {
+double belief_propagation::compute_free_energy_nonedge(bool by_site) noexcept {
     double log_f_non_edge_ = 0;
     double _diff_log_f_non_edge_ = 0;
 
@@ -813,7 +847,7 @@ double belief_propagation::compute_free_energy_nonedge() noexcept {
     return log_f_non_edge_;
 }
 
-double belief_propagation::compute_entropy_nonedge() noexcept {
+double belief_propagation::compute_entropy_nonedge(bool by_site) noexcept {
     double f_non_edge = 0;
     for (unsigned int i = 0; i < N_; ++i) {
         auto nb_of_i = adj_list_ptr_->at(i);
@@ -836,8 +870,9 @@ double belief_propagation::compute_entropy_nonedge() noexcept {
                 }
                 if (numerator_ * denominator_ != 0) {
                     f_non_edge += -numerator_ / denominator_ / 2. / N_;
-
-                    cond_ent_[i] += -numerator_ / denominator_ / 2. / N_;
+                    if (by_site) {
+                        bethe_ent_[i] += -numerator_ / denominator_ / 2. / N_;
+                    }
                 } else {
                     // this could happen, esp. when epsilon is close to 0, where the network structure is strong
                     // then, real_psi_[i] has some zero components.
@@ -849,19 +884,21 @@ double belief_propagation::compute_entropy_nonedge() noexcept {
 }
 
 
-double belief_propagation::compute_free_energy() noexcept {
-    double f_site = compute_free_energy_site();  // ~eq.29
-    double f_link = compute_free_energy_edge();  // ~eq. 30
-    double f_non_edge = compute_free_energy_nonedge();  // ~eq. 31
+double belief_propagation::compute_free_energy(bool by_site) noexcept {
+    double f_site = compute_free_energy_site(by_site);  // ~eq.29
+    double f_link = compute_free_energy_edge(by_site);  // ~eq. 30
+    double f_non_edge = compute_free_energy_nonedge(by_site);  // ~eq. 31
     //std::clog << "(f_site, f_link, f_non_edge) = (" << f_site << ", " << f_link << ", " << f_non_edge << ") \n";
     double totalf = (f_site + f_link + f_non_edge);
+    std::clog << "(total_f, f_site, f_link, f_non_edge) = (" << totalf << ", " << f_site << ", " << f_link << ", " << f_non_edge << ") \n";
+
     return totalf;
 }
 
-double belief_propagation::compute_entropy() noexcept {
-    double e_site = compute_entropy_site();
-    double e_link = compute_entropy_edge();
-//    double e_non_edge = compute_entropy_nonedge();  // computing this term is slow
+double belief_propagation::compute_entropy(bool by_site) noexcept {
+    double e_site = compute_entropy_site(by_site);
+    double e_link = compute_entropy_edge(by_site);
+//    double e_non_edge = compute_entropy_nonedge(by_site);  // computing this term is slow
     double e_non_edge = 0.;  // approx.: e_non_edge doesn't change much during the course of the BP algorithm.
     double total_e = (e_site + e_link + e_non_edge);
     std::clog << "(total_e, e_site, e_link, e_non_edge) = (" << total_e << ", " << e_site << ", " << e_link << ", " << e_non_edge << ") \n";
@@ -870,9 +907,14 @@ double belief_propagation::compute_entropy() noexcept {
 
 void belief_propagation::compute_marg_entropy() noexcept {
     for (unsigned int i = 0; i < N_; ++i) {
-        for (unsigned int q = 0; q < Q_; ++q) {
-            marg_ent_[i] += -real_psi_[i][q] * std::log(real_psi_[i][q]);
+        if (conf_planted_[i] == -1) {
+            for (unsigned int q = 0; q < Q_; ++q) {
+                marg_ent_[i] += -real_psi_[i][q] * std::log(real_psi_[i][q]);
+            }
+        } else {
+            marg_ent_[i] = 0.;
         }
+
     }
 }
 
@@ -887,7 +929,7 @@ double belief_propagation::compute_e_nishimori() noexcept {
             e_nishimori -= eta_[q1] * eta_[q2] * cab_[q1][q2] * logcab_[q1][q2];
         }
     }
-    e_nishimori += -compute_free_energy_nonedge();
+    e_nishimori += -compute_free_energy_nonedge(false);
     return e_nishimori;
 }
 
