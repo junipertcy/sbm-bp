@@ -77,6 +77,7 @@ int main(int argc, char const *argv[]) {
 
     /// for init_special_needs
     bool output_marginals = false;
+    bool output_conditional_pairwise_entropies = false;
     bool output_free_energy = false;
     bool output_weighted_free_energy = false;
     bool output_entropy = false;
@@ -142,6 +143,7 @@ int main(int argc, char const *argv[]) {
             ("cab", po::value<double_vec_t>(&cab)->multitoken(), "cab vector.\n")
 
             ("marginals", "whether output marginals in the infer mode")
+            ("cond_pair_entropies", "whether output conditional pairwise entropies in the infer mode")
             ("free_energy", "Output free_energy in the infer mode")
             ("weighted_free_energy", "Output weighted_free_energy in the infer mode")
             ("entropy", "Output entropy in the infer mode")
@@ -230,6 +232,10 @@ int main(int argc, char const *argv[]) {
     if (var_map.count("marginals") > 0) {
         output_marginals = true;
     }
+    if (var_map.count("cond_pair_entropies") > 0) {
+        output_conditional_pairwise_entropies = true;
+    }
+
     if (var_map.count("free_energy") > 0) {
         output_free_energy = true;
     }
@@ -358,7 +364,7 @@ int main(int argc, char const *argv[]) {
 
     algorithm->init_messages(blockmodel, bp_messages_init_flag, beliefs, true_conf, engine);
 
-    algorithm->init_special_needs(output_marginals, output_free_energy, output_weighted_free_energy, output_entropy, output_weighted_entropy);
+    algorithm->init_special_needs(output_marginals, output_conditional_pairwise_entropies, output_free_energy, output_weighted_free_energy, output_entropy, output_weighted_entropy);
 
     algorithm->set_beta(beta);
 

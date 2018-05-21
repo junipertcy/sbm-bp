@@ -69,6 +69,7 @@ protected:
 
     // special needs
     bool output_marginals_;
+    bool output_conditional_pairwise_entropies_;
     bool output_free_energy_;
     bool output_weighted_free_energy_;
     bool output_entropy_;
@@ -102,6 +103,7 @@ public:
                        std::mt19937 &engine) noexcept;
 
     void init_special_needs(bool if_output_marginals,
+                            bool if_output_conditional_pairwise_entropies,
                             bool if_output_free_energy,
                             bool if_output_weighted_free_energy,
                             bool if_output_entropy,
@@ -175,7 +177,9 @@ private:
 
     // in `compute_entropy` functions
     double numerator_ = 0;
+    double_vec_t numerator_edge_;  // to store the conditional pairwise entropy (experimental)
     double denominator_ = 0.;
+
     double a_ = 0;
     double b_ = 0;
 
@@ -187,6 +191,7 @@ private:
     double_vec_t free_ene_edge_;
     double_vec_t bethe_ent_site_;
     double_vec_t bethe_ent_edge_;
+    double_mat_t cond_pair_ent_;  // to store the conditional pairwise entropy, in same size as `graph_neis_`
 
 };
 

@@ -134,20 +134,21 @@ void belief_propagation::inference(const blockmodel_t &blockmodel,
 //    std::clog << "-----\n";
 
 //    output_vec(bethe_ent_, std::clog);
-    std::clog << "free_ene_: \n";
-    output_vec(free_ene_, std::clog);
-    std::clog << "bethe_ent_: \n";
-    output_vec(bethe_ent_, std::clog);
-    std::clog << "--- --- --- --- \n";
-    std::clog << "--- --- --- --- \n";
-    std::clog << "free_ene_site_: \n";
-    output_vec(free_ene_site_, std::clog);
-    std::clog << "free_ene_edge_: \n";
-    output_vec(free_ene_edge_, std::clog);
-    std::clog << "bethe_ent_site_: \n";
-    output_vec(bethe_ent_site_, std::clog);
-    std::clog << "bethe_ent_edge_: \n";
-    output_vec(bethe_ent_edge_, std::clog);
+//    std::clog << "free_ene_: \n";
+//    output_vec(free_ene_, std::clog);
+//    std::clog << "bethe_ent_: \n";
+//    output_vec(bethe_ent_, std::clog);
+//    std::clog << "--- --- --- --- \n";
+//    std::clog << "--- --- --- --- \n";
+//    std::clog << "free_ene_site_: \n";
+//    output_vec(free_ene_site_, std::clog);
+//    std::clog << "free_ene_edge_: \n";
+//    output_vec(free_ene_edge_, std::clog);
+//    std::clog << "bethe_ent_site_: \n";
+//    output_vec(bethe_ent_site_, std::clog);
+//    std::clog << "bethe_ent_edge_: \n";
+//    output_vec(bethe_ent_edge_, std::clog);
+
 
     if (output_marginals_) {
         // This outputs the vertex marginals when BP is converged.
@@ -162,6 +163,25 @@ void belief_propagation::inference(const blockmodel_t &blockmodel,
             std::clog << "n_idx: " << v << "; margEnt H(v) is " << entropy(real_psi_[v], Q_) << "; n_nbs: " << adj_list_ptr_->at(v).size() << "; nb = ";
             output_vec<>(adj_list_ptr_->at(v), std::clog);
         }
+    }
+
+    if (output_conditional_pairwise_entropies_) {
+        for (unsigned int n = 0; n < N_; ++n) {  // TODO: improve this block!
+            auto nb = graph_neis_[n].size();
+            for (unsigned int m = 0; m < N_; ++m) {
+                std::cout << n << " " << m << " " << entropy(real_psi_[n], 2) << " \n";
+            }
+
+            for (unsigned int nb_ = 0; nb_ < nb; ++nb_) {
+                std::cout << n << " " << graph_neis_[n][nb_] << " " << entropy(mmap_[n][nb_], 2) << " \n";
+            }
+        }
+        double e = compute_entropy(true);
+        for (unsigned int n = 0; n < N_; ++n) {
+//            std::cout << entropy(real_psi_[n], 2) << " ";
+            std::cout << bethe_ent_[n] << " ";
+        }
+        std::cout << "\n";
     }
 }
 
@@ -324,11 +344,13 @@ void belief_propagation::init_messages(const blockmodel_t &blockmodel,
 }
 
 void belief_propagation::init_special_needs(bool if_output_marginals,
+                                            bool if_output_conditional_pairwise_entropies,
                                             bool if_output_free_energy,
                                             bool if_output_weighted_free_energy,
                                             bool if_output_entropy,
                                             bool if_output_weighted_entropy) noexcept {
     output_marginals_ = if_output_marginals;
+    output_conditional_pairwise_entropies_ = if_output_conditional_pairwise_entropies;
     output_free_energy_ = if_output_free_energy;
     output_weighted_free_energy_ = if_output_weighted_free_energy;
     output_entropy_ = if_output_entropy;
@@ -366,6 +388,7 @@ void belief_propagation::bp_allocate(const blockmodel_t &blockmodel) noexcept {
     mmap_.resize(N_);
     graph_neis_inv_.resize(N_);
     graph_neis_.resize(N_);
+    cond_pair_ent_.resize(N_);
 
     unsigned int vertex_j;
     unsigned int idxji;
@@ -374,6 +397,7 @@ void belief_propagation::bp_allocate(const blockmodel_t &blockmodel) noexcept {
 
         graph_neis_inv_[i].resize(adj_list_ptr_->at(i).size());
         graph_neis_[i].resize(adj_list_ptr_->at(i).size());
+        cond_pair_ent_[i].resize(adj_list_ptr_->at(i).size());
 
         auto nb_of_i(adj_list_ptr_->at(i).begin());
         auto n = adj_list_ptr_->at(i).size();
@@ -386,6 +410,7 @@ void belief_propagation::bp_allocate(const blockmodel_t &blockmodel) noexcept {
             idxji = unsigned(int(std::distance(nb_of_j, adj_list_ptr_->at(vertex_j).find(i))));
             graph_neis_inv_[i][idxij] = idxji;
             graph_neis_[i][idxij] = vertex_j;
+            cond_pair_ent_[i][idxij] = 0.;
             advance(nb_of_i, 1);
         }
     }
@@ -565,6 +590,7 @@ double belief_propagation::compute_free_energy_site(bool by_site) noexcept {
                 _diff_a += std::log(_diff_b);
             }
             if (deg_corr_flag_ == 0) {
+
                 _real_psi_q_[q] = a_ + logeta_[q] - beta_ * h_[q] / N_;
                 _diff_real_psi_q[q] = _diff_a + logeta_[q] - _diff_beta * h_[q] / N_;
             } else if (deg_corr_flag_ == 1 || deg_corr_flag_ == 2) {
@@ -609,11 +635,14 @@ double belief_propagation::compute_free_energy_site(bool by_site) noexcept {
 
 double belief_propagation::compute_entropy_site(bool by_site) noexcept {
     double e_site = 0;
+    double_vec_t numerator_a_2_edge_;
 
     for (unsigned int i = 0; i < N_; ++i) {
         numerator_ = 0.;
         denominator_ = 0.;
         const auto n = adj_list_ptr_->at(i).size();
+        numerator_edge_.clear();
+        numerator_edge_.resize(n, 0.);
         for (unsigned int q = 0; q < Q_; ++q) {
             a_ = 0.0;
             double numerator_a_1 = 0.;
@@ -634,6 +663,9 @@ double belief_propagation::compute_entropy_site(bool by_site) noexcept {
             }
 
             double numerator_a_2 = 0.;
+
+            numerator_a_2_edge_.clear();
+            numerator_a_2_edge_.resize(n, 0.);
 //            std::clog << "before the for-loop, n is " << n << "\n";
             for (unsigned int l = 0; l < n; ++l) {
 //                std::clog << "the differential term (with the new log term) -- l is " << l << "\n";
@@ -655,12 +687,18 @@ double belief_propagation::compute_entropy_site(bool by_site) noexcept {
                 }
 //                std::clog << "\n";
                 numerator_a_2 += numerator_b_2_l * std::exp(sum_logs_numerator_b_2_except_l);
+                numerator_a_2_edge_[l] += numerator_b_2_l * std::exp(sum_logs_numerator_b_2_except_l);
             }
             // TODO: think about it! What if the term is very large??
             if (deg_corr_flag_ == 0) {
+
                 denominator_ += std::exp(a_ + logeta_[q] - h_[q] / N_);
                 numerator_ += std::exp(numerator_a_1 + logeta_[q] - h_[q] / N_) * (- h_[q] / N_);  // this term is larger
                 numerator_ += numerator_a_2 * std::exp(logeta_[q] - h_[q] / N_);  // this term is smaller
+                for (unsigned int l = 0; l < n; ++l) {
+                    numerator_edge_[l] += numerator_a_2_edge_[l] * std::exp(logeta_[q] - h_[q] / N_);
+                }
+
             }
         }
 //        std::clog << "Anaytical Z_" << i << ": " << denominator_ << "\n";
@@ -669,6 +707,10 @@ double belief_propagation::compute_entropy_site(bool by_site) noexcept {
         if (by_site) {
             bethe_ent_[i] += numerator_ / denominator_ / N_;
             bethe_ent_site_[i] += numerator_ / denominator_ / N_;
+
+            for (unsigned int l = 0; l < n; ++l) {
+                cond_pair_ent_[i][l] += numerator_edge_[l] / denominator_ / N_;
+            }
         }
 //        std::clog << "node entropy [" << i << "] = " << numerator_ / denominator_ / N_ << "\n";
 //        std::clog << numerator_ / denominator_ / N_ << ",";
@@ -790,6 +832,7 @@ double belief_propagation::compute_entropy_edge(bool by_site) noexcept {
                     }
                 }
             }
+
             s_link += numerator_ / denominator_ / 2. / N_;
             if (by_site) {
                 bethe_ent_[i] += numerator_ / denominator_ / 2. / N_;
