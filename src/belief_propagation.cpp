@@ -559,26 +559,26 @@ void belief_propagation::compute_na_expect() noexcept {
 
 double belief_propagation::compute_free_energy_site(bool by_site) noexcept {
     double f_site = 0;
-    double _diff_f_site = 0;
+//    double _diff_f_site = 0;
 
     for (unsigned int i = 0; i < N_; ++i) {
         const double di = adj_list_ptr_->at(i).size();
         double _rescaling_param_ = -1.;  // Quite ugly, 0 should be good...
-        double _diff_rescaling_param_ = -1.;
+//        double _diff_rescaling_param_ = -1.;
 
         for (unsigned int q = 0; q < Q_; ++q) {
             a_ = 0.;
-            double _diff_a = 0.0;
+//            double _diff_a = 0.0;
             auto nb_of_i = adj_list_ptr_->at(i).size();
             for (unsigned int l = 0; l < nb_of_i; ++l) {
                 b_ = 0.;
-                double _diff_b = 0;
+//                double _diff_b = 0;
 
                 unsigned int nb = graph_neis_[i][l];
                 for (unsigned int t = 0; t < Q_; ++t) {
                     if (deg_corr_flag_ == 0) {
                         b_ += std::pow(cab_[t][q], beta_) * mmap_[i][l][t];
-                        _diff_b += std::pow(cab_[t][q], _diff_beta) * mmap_[i][l][t];
+//                        _diff_b += std::pow(cab_[t][q], _diff_beta) * mmap_[i][l][t];
                     } else if (deg_corr_flag_ == 1) {
                         b_ += di * adj_list_ptr_->at(nb).size() * cab_[t][q] * mmap_[i][l][t];
                     } else if (deg_corr_flag_ == 2) {
@@ -587,12 +587,12 @@ double belief_propagation::compute_free_energy_site(bool by_site) noexcept {
                     }
                 }
                 a_ += std::log(b_);
-                _diff_a += std::log(_diff_b);
+//                _diff_a += std::log(_diff_b);
             }
             if (deg_corr_flag_ == 0) {
 
                 _real_psi_q_[q] = a_ + logeta_[q] - beta_ * h_[q] / N_;
-                _diff_real_psi_q[q] = _diff_a + logeta_[q] - _diff_beta * h_[q] / N_;
+//                _diff_real_psi_q[q] = _diff_a + logeta_[q] - _diff_beta * h_[q] / N_;
             } else if (deg_corr_flag_ == 1 || deg_corr_flag_ == 2) {
                 _real_psi_q_[q] = a_ + logeta_[q] - di * h_[q] / N_;
             }
@@ -601,23 +601,23 @@ double belief_propagation::compute_free_energy_site(bool by_site) noexcept {
                 _rescaling_param_ = _real_psi_q_[q];
             }
 
-            if (_diff_real_psi_q[q] > _diff_rescaling_param_) {
-                _diff_rescaling_param_ = _diff_real_psi_q[q];
-            }
+//            if (_diff_real_psi_q[q] > _diff_rescaling_param_) {
+//                _diff_rescaling_param_ = _diff_real_psi_q[q];
+//            }
         }
 
         double _norm_scaling_param_ = 0.;
-        double _diff_norm_scaling_param_ = 0.;
+//        double _diff_norm_scaling_param_ = 0.;
         for (unsigned int q = 0; q < Q_; ++q) {
             _norm_scaling_param_ += std::exp(_real_psi_q_[q] - _rescaling_param_);
-            _diff_norm_scaling_param_ += std::exp(_diff_real_psi_q[q] - _diff_rescaling_param_);
+//            _diff_norm_scaling_param_ += std::exp(_diff_real_psi_q[q] - _diff_rescaling_param_);
         }
 
         _norm_scaling_param_ = _rescaling_param_ + std::log(_norm_scaling_param_);
-        _diff_norm_scaling_param_ = _diff_rescaling_param_ + std::log(_diff_norm_scaling_param_);
+//        _diff_norm_scaling_param_ = _diff_rescaling_param_ + std::log(_diff_norm_scaling_param_);
 
         f_site += _norm_scaling_param_ / N_;
-        _diff_f_site += _diff_norm_scaling_param_ / N_;
+//        _diff_f_site += _diff_norm_scaling_param_ / N_;
 //        std::clog << (_diff_norm_scaling_param_ - _norm_scaling_param_) / (_diff_beta - beta_) / N_ << ",";
 //        std::clog << "(Correct) Z_" << i << ": " << std::exp(_norm_scaling_param_) << "\n";
         if (by_site) {
@@ -628,7 +628,7 @@ double belief_propagation::compute_free_energy_site(bool by_site) noexcept {
 
     }
 
-    std::clog << "the numerical entropy (site) is " << (_diff_f_site - f_site) / (_diff_beta - beta_) << "\n";
+//    std::clog << "the numerical entropy (site) is " << (_diff_f_site - f_site) / (_diff_beta - beta_) << "\n";
 
     return -f_site;
 }
@@ -721,14 +721,14 @@ double belief_propagation::compute_entropy_site(bool by_site) noexcept {
 
 double belief_propagation::compute_free_energy_edge(bool by_site) noexcept {
     double f_link = 0;
-    double _diff_f_link = 0;
+//    double _diff_f_link = 0;
 
     for (unsigned int i = 0; i < N_; ++i) {
         double di = adj_list_ptr_->at(i).size();
         auto n = adj_list_ptr_->at(i).size();
         for (unsigned int l = 0; l < n; ++l) {
             double norm_L = 0;
-            double _diff_norm_L = 0;
+//            double _diff_norm_L = 0;
 
             unsigned int i2 = graph_neis_[i][l];
             unsigned int l2 = graph_neis_inv_[i][l];
@@ -739,7 +739,7 @@ double belief_propagation::compute_free_energy_edge(bool by_site) noexcept {
                     if (q1 == q2) {
                         if (deg_corr_flag_ == 0) {
                             norm_L += std::pow(cab_[q1][q2], beta_) * (mmap_[i][l][q1] * mmap_[i2][l2][q2]);
-                            _diff_norm_L += std::pow(cab_[q1][q2], _diff_beta) * (mmap_[i][l][q1] * mmap_[i2][l2][q2]);
+//                            _diff_norm_L += std::pow(cab_[q1][q2], _diff_beta) * (mmap_[i][l][q1] * mmap_[i2][l2][q2]);
                         } else if (deg_corr_flag_ == 1) {
                             norm_L += di * dl * cab_[q1][q2] * (mmap_[i][l][q1] * mmap_[i2][l2][q2]);
                         } else if (deg_corr_flag_ == 2) {
@@ -750,8 +750,8 @@ double belief_propagation::compute_free_energy_edge(bool by_site) noexcept {
                         if (deg_corr_flag_ == 0) {
                             norm_L += std::pow(cab_[q1][q2], beta_) *
                                       (mmap_[i][l][q1] * mmap_[i2][l2][q2] + mmap_[i][l][q2] * mmap_[i2][l2][q1]);
-                            _diff_norm_L += std::pow(cab_[q1][q2], _diff_beta) *
-                                            (mmap_[i][l][q1] * mmap_[i2][l2][q2] + mmap_[i][l][q2] * mmap_[i2][l2][q1]);
+//                            _diff_norm_L += std::pow(cab_[q1][q2], _diff_beta) *
+//                                            (mmap_[i][l][q1] * mmap_[i2][l2][q2] + mmap_[i][l][q2] * mmap_[i2][l2][q1]);
 
                         } else if (deg_corr_flag_ == 1) {
                             norm_L += di * dl * cab_[q1][q2] *
@@ -766,14 +766,14 @@ double belief_propagation::compute_free_energy_edge(bool by_site) noexcept {
             }
             // READ the paper! It counts for all edges, but in our calculation, we did it twice!
             f_link += std::log(norm_L) / 2. / N_;
-            _diff_f_link += std::log(_diff_norm_L) / 2. / N_;
+//            _diff_f_link += std::log(_diff_norm_L) / 2. / N_;
             if (by_site) {
                 free_ene_[i] += std::log(norm_L) / 2. / N_;
                 free_ene_edge_[i] += std::log(norm_L) / 2. / N_;
             }
         }
     }
-    std::clog << "the numerical entropy (edge) is " << (_diff_f_link-f_link) / (_diff_beta - beta_) << "\n";
+//    std::clog << "the numerical entropy (edge) is " << (_diff_f_link-f_link) / (_diff_beta - beta_) << "\n";
 
     return f_link;
 }
@@ -848,25 +848,25 @@ double belief_propagation::compute_entropy_edge(bool by_site) noexcept {
 
 double belief_propagation::compute_free_energy_nonedge(bool by_site) noexcept {
     double log_f_non_edge_ = 0;
-    double _diff_log_f_non_edge_ = 0;
+//    double _diff_log_f_non_edge_ = 0;
 
     double f_non_edge_ = 0;
-    double _diff_f_non_edge_ = 0;
+//    double _diff_f_non_edge_ = 0;
     compute_na_expect();
     for (unsigned int q1 = 0; q1 < Q_; ++q1) {
         for (unsigned int q2 = q1; q2 < Q_; ++q2) {
             if (q1 == q2) {
                 f_non_edge_ += -0.5*std::pow(cab_[q1][q2], beta_)*na_expect_[q1]/N_*na_expect_[q2]/N_;
-                _diff_f_non_edge_ += -0.5*std::pow(cab_[q1][q2], _diff_beta)*na_expect_[q1]/N_*na_expect_[q2]/N_;
+//                _diff_f_non_edge_ += -0.5*std::pow(cab_[q1][q2], _diff_beta)*na_expect_[q1]/N_*na_expect_[q2]/N_;
 //                        std::pow((1 - cab_[q1][q2] / N_), beta_) * real_psi_[i][q1] * real_psi_[l][q2];
             } else {
                 f_non_edge_ += -1.*std::pow(cab_[q1][q2], beta_)*na_expect_[q1]/N_*na_expect_[q2]/N_;
-                _diff_f_non_edge_ += -1.*std::pow(cab_[q1][q2], _diff_beta)*na_expect_[q1]/N_*na_expect_[q2]/N_;
+//                _diff_f_non_edge_ += -1.*std::pow(cab_[q1][q2], _diff_beta)*na_expect_[q1]/N_*na_expect_[q2]/N_;
             }
         }
     }
     log_f_non_edge_ = f_non_edge_;
-    _diff_log_f_non_edge_ = _diff_f_non_edge_;
+//    _diff_log_f_non_edge_ = _diff_f_non_edge_;
 
 //
 //    for (unsigned int i = 0; i < N_; ++i) {
@@ -902,7 +902,7 @@ double belief_propagation::compute_free_energy_nonedge(bool by_site) noexcept {
 //    log_f_non_edge_ /= 2. * N_;
 //    _diff_log_f_non_edge_ /= 2. * N_;
 //
-    std::clog << "the numerical entropy (NON-edge) is " << (_diff_log_f_non_edge_-log_f_non_edge_) / (_diff_beta - beta_) << "\n";
+//    std::clog << "the numerical entropy (NON-edge) is " << (_diff_log_f_non_edge_-log_f_non_edge_) / (_diff_beta - beta_) << "\n";
     return log_f_non_edge_;
 }
 
@@ -1236,8 +1236,39 @@ void belief_propagation::sum_all_messages_to_i(unsigned int i) noexcept {
                 }
             }
             if (b == 0.) {
-                std::clog << "sanity check 1: this should not happen.\n";
-                continue;
+
+                double norm = 0.0;
+                for (unsigned int q_ = 0; q_ < Q_; ++q_) {
+                    if (cab_[q_][q] != 0) {
+                        mmap_[i][l][q_] = 1.;
+                        norm += mmap_[i][l][q_];
+                    } else {
+                        mmap_[i][l][q_] = 0.;
+                    }
+                }
+                for (unsigned int q_ = 0; q_ < Q_; ++q_) {
+                    mmap_[i][l][q_] /= norm;
+                }
+
+                b = 0.0;
+                neighbor = graph_neis_[i][l];
+                for (unsigned int t = 0; t < Q_; ++t) {  //they are all to sum over messages from l -> i
+                    if (deg_corr_flag_ == 0) {
+                        b += std::pow(cab_[t][q], beta_) * mmap_[i][l][t];
+                    } else if (deg_corr_flag_ == 1) {
+                        b += di * adj_list_ptr_->at(neighbor).size() * cab_[t][q] * mmap_[i][l][t];
+                        //sum over messages from l -> i
+                    } else if (deg_corr_flag_ == 2) {
+                        double tmp = di * adj_list_ptr_->at(neighbor).size() * pab_[t][q];
+                        b += tmp / (1.0 + tmp) * mmap_[i][l][t];//sum over messages from l -> i
+                    }
+                }
+
+//                std::clog << "sanity check 1: this should not happen.\n";
+//                std::clog << "i = " << i << "; l = " << l << "; q = "<< q << "\n";
+//                output_vec(mmap_[i][l], std::clog);
+//                std::clog << cab_[0][q] << " " << cab_[1][q]<< " " << cab_[2][q]<< " " << cab_[3][q]<< " " << cab_[4][q]<< "\n";
+//                continue;
             }
             a *= b;
             field_iter_[l] = b;
