@@ -191,7 +191,7 @@ private:
     double_vec_t free_ene_edge_;
     double_vec_t bethe_ent_site_;
     double_vec_t bethe_ent_edge_;
-    double_mat_t cond_pair_ent_;  // to store the conditional pairwise entropy, in same size as `graph_neis_`
+//    double_mat_t cond_pair_ent_;  // to store the conditional pairwise entropy, in same size as `graph_neis_`
 
 };
 

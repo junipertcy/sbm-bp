@@ -121,9 +121,11 @@ void belief_propagation::inference(const blockmodel_t &blockmodel,
         std::clog << "Weighted Bethe entropy | overlap | niter \n";
         std::cout << e << " " << compute_overlap() << " " << niter << " \n";
     } else {  // normal mode
-        double e = compute_entropy(true);
-        double f = compute_free_energy(true);
+//        double e = compute_entropy(true);
+//        double f = compute_free_energy(true);
 //        output_vec<double_vec_t>(free_ene_, std::cout);
+        double e = 0.;  // TODO: only ad-hoc change to make inference faster...; fix later.
+        double f = 0.;
         std::clog << "Bethe entropy | Bethe free energy | overlap | niter \n";
         std::cout << e << " " << f << " " << compute_overlap() << " " << niter << " \n";
     }
@@ -388,7 +390,7 @@ void belief_propagation::bp_allocate(const blockmodel_t &blockmodel) noexcept {
     mmap_.resize(N_);
     graph_neis_inv_.resize(N_);
     graph_neis_.resize(N_);
-    cond_pair_ent_.resize(N_);
+//    cond_pair_ent_.resize(N_);
 
     unsigned int vertex_j;
     unsigned int idxji;
@@ -397,7 +399,7 @@ void belief_propagation::bp_allocate(const blockmodel_t &blockmodel) noexcept {
 
         graph_neis_inv_[i].resize(adj_list_ptr_->at(i).size());
         graph_neis_[i].resize(adj_list_ptr_->at(i).size());
-        cond_pair_ent_[i].resize(adj_list_ptr_->at(i).size());
+//        cond_pair_ent_[i].resize(adj_list_ptr_->at(i).size());
 
         auto nb_of_i(adj_list_ptr_->at(i).begin());
         auto n = adj_list_ptr_->at(i).size();
@@ -410,7 +412,7 @@ void belief_propagation::bp_allocate(const blockmodel_t &blockmodel) noexcept {
             idxji = unsigned(int(std::distance(nb_of_j, adj_list_ptr_->at(vertex_j).find(i))));
             graph_neis_inv_[i][idxij] = idxji;
             graph_neis_[i][idxij] = vertex_j;
-            cond_pair_ent_[i][idxij] = 0.;
+//            cond_pair_ent_[i][idxij] = 0.;
             advance(nb_of_i, 1);
         }
     }
@@ -708,9 +710,9 @@ double belief_propagation::compute_entropy_site(bool by_site) noexcept {
             bethe_ent_[i] += numerator_ / denominator_ / N_;
             bethe_ent_site_[i] += numerator_ / denominator_ / N_;
 
-            for (unsigned int l = 0; l < n; ++l) {
-                cond_pair_ent_[i][l] += numerator_edge_[l] / denominator_ / N_;
-            }
+//            for (unsigned int l = 0; l < n; ++l) {
+//                cond_pair_ent_[i][l] += numerator_edge_[l] / denominator_ / N_;
+//            }
         }
 //        std::clog << "node entropy [" << i << "] = " << numerator_ / denominator_ / N_ << "\n";
 //        std::clog << numerator_ / denominator_ / N_ << ",";
