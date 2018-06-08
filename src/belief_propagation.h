@@ -89,11 +89,18 @@ protected:
 
     void compute_diff_h(double beta) noexcept;
 
-public:
-    belief_propagation() : random_real(0, 1) { ; }
+    double norm_m_at_i(unsigned int i, double dumping_rate) noexcept;
+
+    void sum_all_messages_to_i(unsigned int i) noexcept;
 
     // Virtual methods: bogus virtual implementation
     virtual double bp_iter_update_psi(unsigned int i, double dumping_rate) noexcept { return 0; }
+
+    double bp_iter_update_psi_large_degree(unsigned int i,
+                                           double dumping_rate) noexcept;
+
+public:
+    belief_propagation() : random_real(0, 1) { ; }
 
     // Common methods
     void init_messages(const blockmodel_t &blockmodel,
@@ -108,14 +115,6 @@ public:
                             bool if_output_weighted_free_energy,
                             bool if_output_entropy,
                             bool if_output_weighted_entropy) noexcept;
-
-    void bp_allocate(const blockmodel_t &blockmodel) noexcept;
-
-    void expand_bp_params(const bp_blockmodel_state &state) noexcept;
-
-    void sum_all_messages_to_i(unsigned int i) noexcept;
-
-    double norm_m_at_i(unsigned int i, double dumping_rate) noexcept;
 
     void learning(const blockmodel_t &blockmodel,
                   const bp_blockmodel_state &state,
@@ -137,21 +136,21 @@ public:
                    float dumping_rate,
                    std::mt19937 &engine) noexcept;
 
-
-    double bp_iter_update_psi_large_degree(unsigned int i,
-                                           double dumping_rate) noexcept;
-
     void set_beta(double beta) noexcept;
 
+private:
     double compute_free_energy(bool by_site) noexcept;
 
     double compute_entropy(bool by_site) noexcept;
 
     double compute_overlap() noexcept;
 
-    /// EM methods will be listed here!!!
+    void bp_allocate(const blockmodel_t &blockmodel) noexcept;
 
-private:
+    void expand_bp_params(const bp_blockmodel_state &state) noexcept;
+
+    void compute_conditional_entropy_at_i(unsigned int i) noexcept;
+
     void compute_cab_expect() noexcept;
 
     void compute_na_expect() noexcept;
@@ -187,10 +186,11 @@ private:
     double_vec_t bethe_ent_;  // Bethe entropy for each node
     double_vec_t marg_ent_;  // marginal entropy for the uncertainty of the labels for each node
     double_vec_t free_ene_;  // equilibrated Bethe free energy of each node
-    double_vec_t free_ene_site_;
-    double_vec_t free_ene_edge_;
-    double_vec_t bethe_ent_site_;
-    double_vec_t bethe_ent_edge_;
+    double_vec_t avg_cond_ent_;
+//    double_vec_t free_ene_site_;
+//    double_vec_t free_ene_edge_;
+//    double_vec_t bethe_ent_site_;
+//    double_vec_t bethe_ent_edge_;
 //    double_mat_t cond_pair_ent_;  // to store the conditional pairwise entropy, in same size as `graph_neis_`
 
 };
