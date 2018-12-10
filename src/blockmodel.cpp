@@ -4,11 +4,11 @@
 
 using namespace std;
 
-blockmodel_t::blockmodel_t(const uint_vec_t &memberships,
+blockmodel_t::blockmodel_t(const uint_vec_t& memberships,
                            unsigned int Q,
                            unsigned int N,
                            unsigned int deg_corr_flag,
-                           const adj_list_t *adj_list_ptr) :
+                           const adj_list_t* adj_list_ptr) :
 
         random_block_(0, Q - 1),
         random_node_(0, N - 1) {
@@ -73,12 +73,11 @@ const uint_mat_t *blockmodel_t::get_m() const noexcept {
     return &m_;
 }
 
-unsigned int blockmodel_t::get_N() const noexcept { return unsigned(int(memberships_.size())); }
+size_t blockmodel_t::get_N() const noexcept { return memberships_.size(); }
 
-unsigned int blockmodel_t::get_Q() const noexcept { return unsigned(int(n_.size())); }
+size_t blockmodel_t::get_Q() const noexcept { return n_.size(); }
 
-
-unsigned int blockmodel_t::get_E() const noexcept { return num_edges_; }
+size_t blockmodel_t::get_E() const noexcept { return num_edges_; }
 
 unsigned int blockmodel_t::get_deg_corr_flag() const noexcept { return deg_corr_flag_; }
 
@@ -87,7 +86,7 @@ double blockmodel_t::get_entropy_from_degree_correction() const noexcept { retur
 /// BP
 unsigned int blockmodel_t::get_graph_max_degree() const noexcept { return graph_max_degree_; }
 
-void blockmodel_t::shuffle(std::mt19937 &engine) noexcept {
+void blockmodel_t::shuffle(std::mt19937& engine) noexcept {
     std::shuffle(memberships_.begin(), memberships_.end(), engine);
     compute_k();
 }
@@ -105,7 +104,7 @@ void blockmodel_t::compute_k() noexcept {
 }
 
 void blockmodel_t::compute_m() noexcept {
-    unsigned int q = get_Q();
+    size_t q = get_Q();
     auto n = (unsigned) adj_list_ptr_->size();
     m_.clear();
     m_.resize(q, uint_vec_t(q, 0));
@@ -177,7 +176,7 @@ uint_mat_t blockmodel_t::compute_e_rs() noexcept {
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Non class methods
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-bp_blockmodel_state bp_param_from_rand(const blockmodel_t &blockmodel, std::mt19937 &engine) noexcept {
+bp_blockmodel_state bp_param_from_rand(const blockmodel_t& blockmodel, std::mt19937& engine) noexcept {
     std::clog << "in bp_param_from_rand" << "\n";
 
     bp_blockmodel_state state;
@@ -234,7 +233,7 @@ bp_blockmodel_state bp_param_from_rand(const blockmodel_t &blockmodel, std::mt19
     return state;
 }
 
-bp_blockmodel_state bp_param_from_epsilon_c(const blockmodel_t &blockmodel, double epsilon, double c) noexcept {
+bp_blockmodel_state bp_param_from_epsilon_c(const blockmodel_t& blockmodel, double epsilon, double c) noexcept {
     unsigned int N = blockmodel.get_N();
     unsigned int Q = blockmodel.get_Q();
 
@@ -279,7 +278,7 @@ bp_blockmodel_state bp_param_from_epsilon_c(const blockmodel_t &blockmodel, doub
     return state;
 }
 
-bp_blockmodel_state bp_param_from_direct(const blockmodel_t &blockmodel, double_vec_t pa, double_vec_t cab) noexcept {
+bp_blockmodel_state bp_param_from_direct(const blockmodel_t& blockmodel, const double_vec_t& pa, const double_vec_t& cab) noexcept {
     unsigned int N = blockmodel.get_N();
     unsigned int Q = blockmodel.get_Q();
 

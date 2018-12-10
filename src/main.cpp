@@ -18,7 +18,6 @@
 
 // Boost
 #include <boost/program_options.hpp>
-#include <curses.h>
 
 // Program headers
 #include "types.h"

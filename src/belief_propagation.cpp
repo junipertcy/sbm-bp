@@ -1,7 +1,7 @@
 #include "belief_propagation.h"
 #include <cassert>
 
-static double entropy(double_vec_t dist, unsigned int size) noexcept {
+static double entropy(const double_vec_t& dist, unsigned int size) noexcept {
     double temp = 0.0;
     for (unsigned int i = 0; i < size; ++i) {
         if (dist[i] > 0) {
@@ -11,13 +11,13 @@ static double entropy(double_vec_t dist, unsigned int size) noexcept {
     return temp;
 };
 
-void belief_propagation::learning(const blockmodel_t &blockmodel,
+void belief_propagation::learning(const blockmodel_t& blockmodel,
                                   const bp_blockmodel_state &state,
                                   float learning_conv_crit,
                                   unsigned int learning_max_time,
                                   float learning_rate,
                                   float dumping_rate,
-                                  std::mt19937 &engine) noexcept {
+                                  std::mt19937& engine) noexcept {
     expand_bp_params(state);
 
     double fold = 0.0;
@@ -74,12 +74,12 @@ void belief_propagation::learning_step(float learning_rate) noexcept {
     }
 }
 
-void belief_propagation::inference(const blockmodel_t &blockmodel,
-                                   const bp_blockmodel_state &state,
+void belief_propagation::inference(const blockmodel_t& blockmodel,
+                                   const bp_blockmodel_state& state,
                                    float conv_crit,
                                    unsigned int time_conv,
                                    float dumping_rate,
-                                   std::mt19937 &engine) noexcept {
+                                   std::mt19937& engine) noexcept {
 
     expand_bp_params(state);
     int niter = converge(conv_crit, time_conv, dumping_rate, engine);
@@ -173,7 +173,7 @@ void belief_propagation::inference(const blockmodel_t &blockmodel,
 int belief_propagation::converge(float bp_err,
                                  unsigned int max_iter_time,
                                  float dumping_rate,
-                                 std::mt19937 &engine) noexcept {
+                                 std::mt19937& engine) noexcept {
     init_h();
     for (int iter_time = 0; iter_time < max_iter_time; ++iter_time) {
         maxdiffm_ = -100.;
@@ -203,11 +203,11 @@ int belief_propagation::converge(float bp_err,
     return -1;
 }
 
-void belief_propagation::init_messages(const blockmodel_t &blockmodel,
+void belief_propagation::init_messages(const blockmodel_t& blockmodel,
                                        unsigned int bp_messages_init_flag,
-                                       const int_vec_t &conf,
-                                       const uint_vec_t &true_conf,
-                                       std::mt19937 &engine) noexcept {
+                                       const int_vec_t& conf,
+                                       const uint_vec_t& true_conf,
+                                       std::mt19937& engine) noexcept {
     assert(bp_messages_init_flag < 4);
     bp_allocate(blockmodel);
     conf_true_ = true_conf;
@@ -339,7 +339,7 @@ void belief_propagation::init_special_needs(bool if_output_marginals,
     output_weighted_entropy_ = if_output_weighted_entropy;
 }
 
-void belief_propagation::bp_allocate(const blockmodel_t &blockmodel) noexcept {
+void belief_propagation::bp_allocate(const blockmodel_t& blockmodel) noexcept {
     Q_ = blockmodel.get_Q();
     N_ = blockmodel.get_N();
     adj_list_ptr_ = blockmodel.get_adj_list_ptr();
@@ -419,7 +419,7 @@ void belief_propagation::bp_allocate(const blockmodel_t &blockmodel) noexcept {
 
 }
 
-void belief_propagation::expand_bp_params(const bp_blockmodel_state &state) noexcept {
+void belief_propagation::expand_bp_params(const bp_blockmodel_state& state) noexcept {
 
     cab_ = state.cab;
     na_ = state.na;

@@ -12,7 +12,7 @@
 #include "blockmodel.h"
 #include "output_functions.h"
 
-static double entropy(double_vec_t dist, unsigned int size) noexcept;
+static double entropy(const double_vec_t& dist, unsigned int size) noexcept;
 
 
 class belief_propagation {
@@ -103,11 +103,11 @@ public:
     belief_propagation() : random_real(0, 1) { ; }
 
     // Common methods
-    void init_messages(const blockmodel_t &blockmodel,
+    void init_messages(const blockmodel_t& blockmodel,
                        unsigned int bp_messages_init_flag,
-                       const int_vec_t &conf,
-                       const uint_vec_t &true_conf,
-                       std::mt19937 &engine) noexcept;
+                       const int_vec_t& conf,
+                       const uint_vec_t& true_conf,
+                       std::mt19937& engine) noexcept;
 
     void init_special_needs(bool if_output_marginals,
                             bool if_output_conditional_pairwise_entropies,
@@ -116,25 +116,25 @@ public:
                             bool if_output_entropy,
                             bool if_output_weighted_entropy) noexcept;
 
-    void learning(const blockmodel_t &blockmodel,
-                  const bp_blockmodel_state &state,
+    void learning(const blockmodel_t& blockmodel,
+                  const bp_blockmodel_state& state,
                   float learning_conv_crit,
                   unsigned int learning_max_time,
                   float learning_rate,
                   float dumping_rate,
-                  std::mt19937 &engine) noexcept;
+                  std::mt19937& engine) noexcept;
 
     int converge(float conv_crit,
                  unsigned int time_conv,
                  float dumping_rate,
-                 std::mt19937 &engine) noexcept;
+                 std::mt19937& engine) noexcept;
 
-    void inference(const blockmodel_t &blockmodel,
-                   const bp_blockmodel_state &state,
+    void inference(const blockmodel_t& blockmodel,
+                   const bp_blockmodel_state& state,
                    float conv_crit,
                    unsigned int time_conv,
                    float dumping_rate,
-                   std::mt19937 &engine) noexcept;
+                   std::mt19937& engine) noexcept;
 
     void set_beta(double beta) noexcept;
 
@@ -145,9 +145,9 @@ private:
 
     double compute_overlap() noexcept;
 
-    void bp_allocate(const blockmodel_t &blockmodel) noexcept;
+    void bp_allocate(const blockmodel_t& blockmodel) noexcept;
 
-    void expand_bp_params(const bp_blockmodel_state &state) noexcept;
+    void expand_bp_params(const bp_blockmodel_state& state) noexcept;
 
     void compute_conditional_entropy_at_i(unsigned int i) noexcept;
 

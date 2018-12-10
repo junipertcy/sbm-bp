@@ -15,11 +15,11 @@ public:
     // Ctor
     blockmodel_t() : random_real(0, 1) { ; }
 
-    blockmodel_t(const uint_vec_t &memberships,
+    blockmodel_t(const uint_vec_t& memberships,
                  unsigned int Q,
                  unsigned int N,
                  unsigned int deg_corr_flag,
-                 const adj_list_t *adj_list_ptr);
+                 const adj_list_t* adj_list_ptr);
 
     /*
      * Note that we treat these input variables as first-class citizens for the blockmodel
@@ -31,11 +31,11 @@ public:
      *
      */
 
-    unsigned int get_N() const noexcept;
+    size_t get_N() const noexcept;
 
-    unsigned int get_Q() const noexcept;
+    size_t get_Q() const noexcept;
 
-    unsigned int get_E() const noexcept;
+    size_t get_E() const noexcept;
 
     unsigned int get_deg_corr_flag() const noexcept;
 
@@ -46,7 +46,7 @@ public:
     /// BP
     unsigned int get_graph_max_degree() const noexcept;
 
-    void shuffle(std::mt19937 &engine) noexcept;
+    void shuffle(std::mt19937& engine) noexcept;
 
     int_vec_t get_k(unsigned int vertex) const noexcept;
 
@@ -65,7 +65,7 @@ public:
 
 private:
     /// State variable
-    const adj_list_t *adj_list_ptr_;
+    const adj_list_t* adj_list_ptr_;
     int_mat_t k_;
     uint_mat_t p_;
     int_vec_t n_;
@@ -102,12 +102,12 @@ private:
 };
 
 /* parameters for bp inference and learning */
-bp_blockmodel_state bp_param_from_rand(const blockmodel_t &blockmodel, std::mt19937 &engine) noexcept;
+bp_blockmodel_state bp_param_from_rand(const blockmodel_t& blockmodel, std::mt19937& engine) noexcept;
 
-bp_blockmodel_state bp_param_from_epsilon_c(const blockmodel_t &blockmodel, double epsilon, double c) noexcept;
+bp_blockmodel_state bp_param_from_epsilon_c(const blockmodel_t& blockmodel, double epsilon, double c) noexcept;
 
-bp_blockmodel_state bp_param_from_direct(const blockmodel_t &blockmodel, double_vec_t pa, double_vec_t cab) noexcept;
+bp_blockmodel_state bp_param_from_direct(const blockmodel_t& blockmodel, const double_vec_t& pa, const double_vec_t& cab) noexcept;
 
-bp_blockmodel_state bp_param_from_file(const blockmodel_t &blockmodel, std::string cab_file) noexcept;
+bp_blockmodel_state bp_param_from_file(const blockmodel_t& blockmodel, std::string cab_file) noexcept;
 
 #endif //BP_SELECTION_BLOCKMODEL_H
