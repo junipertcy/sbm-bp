@@ -33,6 +33,16 @@ else()
     set(HAVE_LIBBOOST_PROGRAM_OPTIONS 0)
 endif ()
 
+# OpenMP
+find_package(OpenMP)
+if (OPENMP_FOUND)
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_EXE_LINKER_FLAGS}")
+else()
+    message(STATUS "OpenMP is not found. Using limited interface.")
+endif ()
+
 # Steady clock (Google code)
 include(cmake_tests/CXXFeatureCheck.cmake)
 # If successful, then HAVE_STEADY_CLOCK is set to 1
@@ -64,4 +74,3 @@ include_directories("${PROJECT_BINARY_DIR}")
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 add_subdirectory(src)
-

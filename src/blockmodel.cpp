@@ -180,9 +180,9 @@ bp_blockmodel_state bp_param_from_rand(const blockmodel_t& blockmodel, std::mt19
     std::clog << "in bp_param_from_rand" << "\n";
 
     bp_blockmodel_state state;
-    unsigned int N = blockmodel.get_N();
-    unsigned int Q = blockmodel.get_Q();
-    unsigned int M = blockmodel.get_E();
+    size_t N = blockmodel.get_N();
+    size_t Q = blockmodel.get_Q();
+    size_t M = blockmodel.get_E();
     state.cab.resize(Q);
     state.na.resize(Q);
 
@@ -234,8 +234,8 @@ bp_blockmodel_state bp_param_from_rand(const blockmodel_t& blockmodel, std::mt19
 }
 
 bp_blockmodel_state bp_param_from_epsilon_c(const blockmodel_t& blockmodel, double epsilon, double c) noexcept {
-    unsigned int N = blockmodel.get_N();
-    unsigned int Q = blockmodel.get_Q();
+    size_t N = blockmodel.get_N();
+    size_t Q = blockmodel.get_Q();
 
     bp_blockmodel_state state;
     state.na.resize(Q);
@@ -279,8 +279,8 @@ bp_blockmodel_state bp_param_from_epsilon_c(const blockmodel_t& blockmodel, doub
 }
 
 bp_blockmodel_state bp_param_from_direct(const blockmodel_t& blockmodel, const double_vec_t& pa, const double_vec_t& cab) noexcept {
-    unsigned int N = blockmodel.get_N();
-    unsigned int Q = blockmodel.get_Q();
+    size_t N = blockmodel.get_N();
+    size_t Q = blockmodel.get_Q();
 
     bp_blockmodel_state state;
     state.na.resize(Q);

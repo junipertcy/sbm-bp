@@ -62,7 +62,6 @@ int main(int argc, char const *argv[]) {
     float learning_conv_crit;
     unsigned int time_conv;
 
-
     std::string bm_params_string;
     /// Setting cab and pa; case I
     bool cab_ppm = false;
@@ -127,7 +126,6 @@ int main(int argc, char const *argv[]) {
             ("time_conv,t", po::value<unsigned int>(&time_conv)->default_value(100),
              "set time_conv, maximum time for BP to converge, default 100.")
 
-
             ("probabilities,P", po::value<float_vec_t>(&probabilities)->multitoken(),
              "In normal mode (SBM): probability matrix in row major order. In PPM mode: p_in followed by p_out.")
             ("fixed_nodes,f", po::value<uint_vec_t>(&fixed_nodes)->multitoken(), "Fixed nodes with known labels.")
@@ -147,7 +145,6 @@ int main(int argc, char const *argv[]) {
             ("weighted_free_energy", "Output weighted_free_energy in the infer mode")
             ("entropy", "Output entropy in the infer mode")
             ("weighted_entropy", "Output weighted_entropy in the infer mode")
-
 
             ("mode,m", po::value<std::string>(&mode), "Mode for the algorithm; valid values: infer | learn.")
             ("seed,d", po::value<unsigned int>(&seed),
@@ -302,7 +299,6 @@ int main(int argc, char const *argv[]) {
     }
     edge_list_t edge_list;  // Graph structure
     load_edge_list(edge_list, edge_list_path);
-
     adj_list_t adj_list = edge_to_adj(edge_list, N);
     edge_list.clear();
 

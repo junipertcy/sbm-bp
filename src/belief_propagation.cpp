@@ -1,7 +1,8 @@
+#include "omp.h"
 #include "belief_propagation.h"
 #include <cassert>
 
-static double entropy(const double_vec_t& dist, unsigned int size) noexcept {
+static double entropy(const double_vec_t &dist, unsigned int size) noexcept {
     double temp = 0.0;
     for (unsigned int i = 0; i < size; ++i) {
         if (dist[i] > 0) {
@@ -11,13 +12,13 @@ static double entropy(const double_vec_t& dist, unsigned int size) noexcept {
     return temp;
 };
 
-void belief_propagation::learning(const blockmodel_t& blockmodel,
+void belief_propagation::learning(const blockmodel_t &blockmodel,
                                   const bp_blockmodel_state &state,
                                   float learning_conv_crit,
                                   unsigned int learning_max_time,
                                   float learning_rate,
                                   float dumping_rate,
-                                  std::mt19937& engine) noexcept {
+                                  std::mt19937 &engine) noexcept {
     expand_bp_params(state);
 
     double fold = 0.0;
@@ -74,12 +75,12 @@ void belief_propagation::learning_step(float learning_rate) noexcept {
     }
 }
 
-void belief_propagation::inference(const blockmodel_t& blockmodel,
-                                   const bp_blockmodel_state& state,
+void belief_propagation::inference(const blockmodel_t &blockmodel,
+                                   const bp_blockmodel_state &state,
                                    float conv_crit,
                                    unsigned int time_conv,
                                    float dumping_rate,
-                                   std::mt19937& engine) noexcept {
+                                   std::mt19937 &engine) noexcept {
 
     expand_bp_params(state);
     int niter = converge(conv_crit, time_conv, dumping_rate, engine);
@@ -163,8 +164,9 @@ void belief_propagation::inference(const blockmodel_t& blockmodel,
         output_mat<double_mat_t>(real_psi_, std::cout);
         // MI(v) = H(v) − H(v | G \ v)
         //       = entropy of the average conditional distribution (margEntropy) - average of the conditional entropy (condEntropy);
-        for (unsigned int v = 0; v < N_ ; ++v) {
-            std::clog << "n_idx: " << v << "; margEnt H(v) is " << entropy(real_psi_[v], Q_) << "; n_nbs: " << adj_list_ptr_->at(v).size() << "; nb = ";
+        for (unsigned int v = 0; v < N_; ++v) {
+            std::clog << "n_idx: " << v << "; margEnt H(v) is " << entropy(real_psi_[v], Q_) << "; n_nbs: "
+                      << adj_list_ptr_->at(v).size() << "; nb = ";
             output_vec<>(adj_list_ptr_->at(v), std::clog);
         }
     }
@@ -175,20 +177,48 @@ int belief_propagation::converge(float bp_err,
                                  float dumping_rate,
                                  std::mt19937& engine) noexcept {
     init_h();
+
+    int nt{omp_get_max_threads()};
+    std::clog << "max threads = " << nt << "\n";
+
+    omp_set_num_threads(4);
+    std::clog << "used threads = " << 1 << "\n";
+
+
     for (int iter_time = 0; iter_time < max_iter_time; ++iter_time) {
         maxdiffm_ = -100.;
-        for (unsigned int iter_inter_time = 0; iter_inter_time < N_; ++iter_inter_time) {
-            double diffm = 0.;
-            auto i = unsigned(int(random_real(engine) * N_));   // TODO: unify the expression
-            if (adj_list_ptr_->at(i).size() >= LARGE_DEGREE) {
-                diffm = bp_iter_update_psi_large_degree(i, dumping_rate);
-            } else {
-                diffm = bp_iter_update_psi(i, dumping_rate);
+//        std::shuffle(&nodes[0], &nodes[N_], engine);
+        #pragma omp parallel shared(max_iter_time, iter_time) num_threads(4)
+        {
+//            std::shuffle(&nodes[0], &nodes[N_], engine);
+
+            #pragma omp for schedule(static, 4) ordered
+            for (unsigned int iter_inter_time = 0; iter_inter_time < N_; ++iter_inter_time) {
+                double diffm = 0.;
+//                auto i = unsigned(int(random_real(engine) * N_));   // TODO: unify the expression
+//                std::clog << i << ", " << nodes[iter_inter_time] << "\n";
+                auto i = unsigned(int(random_real(engine) * N_));
+                #pragma omp ordered
+                {
+                    if (adj_list_ptr_->at(i).size() >= LARGE_DEGREE) {
+                        diffm = bp_iter_update_psi_large_degree(i, dumping_rate);
+                    } else {
+                        diffm = bp_iter_update_psi(i, dumping_rate);
+                    }
+                }  // critical
+
+                #pragma omp flush(maxdiffm_)
+                {
+                    #pragma omp critical
+                    if (diffm > maxdiffm_)
+                    {
+                        if (diffm > maxdiffm_) {
+                            maxdiffm_ = diffm;
+                        }
+                    }  // critical
+                }  // flush(maxdiffm_)
             }
-            if (diffm > maxdiffm_) {
-                maxdiffm_ = diffm;
-            }
-        }
+        }  // parallel
 
         if (maxdiffm_ < bp_err) {
             std::clog << "End-of-BP: maxdiffm (" << maxdiffm_ << ") < bp_err (" << bp_err << "); iter_times = " << iter_time + 1 << "\n";
@@ -203,11 +233,11 @@ int belief_propagation::converge(float bp_err,
     return -1;
 }
 
-void belief_propagation::init_messages(const blockmodel_t& blockmodel,
+void belief_propagation::init_messages(const blockmodel_t &blockmodel,
                                        unsigned int bp_messages_init_flag,
-                                       const int_vec_t& conf,
-                                       const uint_vec_t& true_conf,
-                                       std::mt19937& engine) noexcept {
+                                       const int_vec_t &conf,
+                                       const uint_vec_t &true_conf,
+                                       std::mt19937 &engine) noexcept {
     assert(bp_messages_init_flag < 4);
     bp_allocate(blockmodel);
     conf_true_ = true_conf;
@@ -339,7 +369,7 @@ void belief_propagation::init_special_needs(bool if_output_marginals,
     output_weighted_entropy_ = if_output_weighted_entropy;
 }
 
-void belief_propagation::bp_allocate(const blockmodel_t& blockmodel) noexcept {
+void belief_propagation::bp_allocate(const blockmodel_t &blockmodel) noexcept {
     Q_ = blockmodel.get_Q();
     N_ = blockmodel.get_N();
     adj_list_ptr_ = blockmodel.get_adj_list_ptr();
@@ -419,7 +449,7 @@ void belief_propagation::bp_allocate(const blockmodel_t& blockmodel) noexcept {
 
 }
 
-void belief_propagation::expand_bp_params(const bp_blockmodel_state& state) noexcept {
+void belief_propagation::expand_bp_params(const bp_blockmodel_state &state) noexcept {
 
     cab_ = state.cab;
     na_ = state.na;
@@ -676,7 +706,7 @@ double belief_propagation::compute_entropy_site(bool by_site) noexcept {
             if (deg_corr_flag_ == 0) {
 
                 denominator_ += std::exp(a_ + logeta_[q] - h_[q] / N_);
-                numerator_ += std::exp(numerator_a_1 + logeta_[q] - h_[q] / N_) * (- h_[q] / N_);  // this term is larger
+                numerator_ += std::exp(numerator_a_1 + logeta_[q] - h_[q] / N_) * (-h_[q] / N_);  // this term is larger
                 numerator_ += numerator_a_2 * std::exp(logeta_[q] - h_[q] / N_);  // this term is smaller
                 for (unsigned int l = 0; l < n; ++l) {
                     numerator_edge_[l] += numerator_a_2_edge_[l] * std::exp(logeta_[q] - h_[q] / N_);
@@ -785,7 +815,7 @@ double belief_propagation::compute_entropy_edge(bool by_site) noexcept {
                         } else if (deg_corr_flag_ == 1) {
                             denominator_ += di * dl * cab_[q1][q2] * (mmap_[i][l][q1] * mmap_[i2][l2][q2]);
                             numerator_ += di * dl * cab_[q1][q2] * std::log(cab_[q1][q2]) *
-                                         (mmap_[i][l][q1] * mmap_[i2][l2][q2]);
+                                          (mmap_[i][l][q1] * mmap_[i2][l2][q2]);
                         } else if (deg_corr_flag_ == 2) {
                             double tmp = di * dl * pab_[q1][q2];
                             denominator_ += tmp / (1.0 + tmp) * (mmap_[i][l][q1] * mmap_[i2][l2][q2]);
@@ -795,22 +825,22 @@ double belief_propagation::compute_entropy_edge(bool by_site) noexcept {
                     } else {
                         if (deg_corr_flag_ == 0) {
                             denominator_ += cab_[q1][q2] *
-                                           (mmap_[i][l][q1] * mmap_[i2][l2][q2] + mmap_[i][l][q2] * mmap_[i2][l2][q1]);
+                                            (mmap_[i][l][q1] * mmap_[i2][l2][q2] + mmap_[i][l][q2] * mmap_[i2][l2][q1]);
                             numerator_ += cab_[q1][q2] * std::log(cab_[q1][q2]) *
-                                         (mmap_[i][l][q1] * mmap_[i2][l2][q2] + mmap_[i][l][q2] * mmap_[i2][l2][q1]);
+                                          (mmap_[i][l][q1] * mmap_[i2][l2][q2] + mmap_[i][l][q2] * mmap_[i2][l2][q1]);
                         } else if (deg_corr_flag_ == 1) {
                             denominator_ += di * dl * cab_[q1][q2] *
-                                           (mmap_[i][l][q1] * mmap_[i2][l2][q2] + mmap_[i][l][q2] * mmap_[i2][l2][q1]);
+                                            (mmap_[i][l][q1] * mmap_[i2][l2][q2] + mmap_[i][l][q2] * mmap_[i2][l2][q1]);
 
                             numerator_ += di * dl * cab_[q1][q2] * std::log(cab_[q1][q2]) *
-                                         (mmap_[i][l][q1] * mmap_[i2][l2][q2] + mmap_[i][l][q2] * mmap_[i2][l2][q1]);
+                                          (mmap_[i][l][q1] * mmap_[i2][l2][q2] + mmap_[i][l][q2] * mmap_[i2][l2][q1]);
                         } else if (deg_corr_flag_ == 2) {
                             double tmp = di * dl * pab_[q1][q2];
                             denominator_ += tmp / (1.0 + tmp) *
-                                           (mmap_[i][l][q1] * mmap_[i2][l2][q2] + mmap_[i][l][q2] * mmap_[i2][l2][q1]);
+                                            (mmap_[i][l][q1] * mmap_[i2][l2][q2] + mmap_[i][l][q2] * mmap_[i2][l2][q1]);
 
                             numerator_ += tmp / (1.0 + tmp) * std::log(cab_[q1][q2]) *
-                                         (mmap_[i][l][q1] * mmap_[i2][l2][q2] + mmap_[i][l][q2] * mmap_[i2][l2][q1]);
+                                          (mmap_[i][l][q1] * mmap_[i2][l2][q2] + mmap_[i][l][q2] * mmap_[i2][l2][q1]);
                         }
                     }
                 }
@@ -839,11 +869,11 @@ double belief_propagation::compute_free_energy_nonedge(bool by_site) noexcept {
     for (unsigned int q1 = 0; q1 < Q_; ++q1) {
         for (unsigned int q2 = q1; q2 < Q_; ++q2) {
             if (q1 == q2) {
-                f_non_edge_ += -0.5*std::pow(cab_[q1][q2], beta_)*na_expect_[q1]/N_*na_expect_[q2]/N_;
+                f_non_edge_ += -0.5 * std::pow(cab_[q1][q2], beta_) * na_expect_[q1] / N_ * na_expect_[q2] / N_;
 //                _diff_f_non_edge_ += -0.5*std::pow(cab_[q1][q2], _diff_beta)*na_expect_[q1]/N_*na_expect_[q2]/N_;
 //                        std::pow((1 - cab_[q1][q2] / N_), beta_) * real_psi_[i][q1] * real_psi_[l][q2];
             } else {
-                f_non_edge_ += -1.*std::pow(cab_[q1][q2], beta_)*na_expect_[q1]/N_*na_expect_[q2]/N_;
+                f_non_edge_ += -1. * std::pow(cab_[q1][q2], beta_) * na_expect_[q1] / N_ * na_expect_[q2] / N_;
 //                _diff_f_non_edge_ += -1.*std::pow(cab_[q1][q2], _diff_beta)*na_expect_[q1]/N_*na_expect_[q2]/N_;
             }
         }
@@ -932,7 +962,8 @@ double belief_propagation::compute_free_energy(bool by_site) noexcept {
     double f_non_edge = compute_free_energy_nonedge(by_site);  // ~eq. 31
     //std::clog << "(f_site, f_link, f_non_edge) = (" << f_site << ", " << f_link << ", " << f_non_edge << ") \n";
     double totalf = (f_site + f_link + f_non_edge);
-    std::clog << "(total_f, f_site, f_link, f_non_edge) = (" << totalf << ", " << f_site << ", " << f_link << ", " << f_non_edge << ") \n";
+    std::clog << "(total_f, f_site, f_link, f_non_edge) = (" << totalf << ", " << f_site << ", " << f_link << ", "
+              << f_non_edge << ") \n";
 
     return totalf;
 }
@@ -943,7 +974,8 @@ double belief_propagation::compute_entropy(bool by_site) noexcept {
 //    double e_non_edge = compute_entropy_nonedge(by_site);  // computing this term is slow
     double e_non_edge = 0.;  // approx.: e_non_edge doesn't change much during the course of the BP algorithm.
     double total_e = (e_site + e_link + e_non_edge);
-    std::clog << "(total_e, e_site, e_link, e_non_edge) = (" << total_e << ", " << e_site << ", " << e_link << ", " << e_non_edge << ") \n";
+    std::clog << "(total_e, e_site, e_link, e_non_edge) = (" << total_e << ", " << e_site << ", " << e_link << ", "
+              << e_non_edge << ") \n";
     return total_e;
 }
 
@@ -1347,17 +1379,23 @@ void belief_propagation::sum_all_messages_to_i(unsigned int i) noexcept {
 
 double belief_propagation::norm_m_at_i(unsigned int i, double dumping_rate) noexcept {
     // normalization
-    double mymaxdiff = -100.;
+    double mymaxdiff;
+    mymaxdiff = -100.;
+    double mydiff;
+    unsigned int i2;
+    unsigned int l2;
     const auto n = adj_list_ptr_->at(i).size();
     for (unsigned int q = 0; q < Q_; ++q) {
         real_psi_[i][q] = _real_psi_q_[q] / _real_psi_total_;
 //        if (n == 0) {
 //            break;  // isolated nodes -->  we'll ask converge() to randomly select a new node.
 //        }
+
         for (unsigned int l = 0; l < n; ++l) {
-            unsigned int i2 = graph_neis_[i][l];
-            unsigned int l2 = graph_neis_inv_[i][l];
-            double mydiff = fabs(mmap_[i2][l2][q] - _mmap_q_nb_[q][l] / _mmap_total_[l]);
+            i2 = graph_neis_[i][l];
+            l2 = graph_neis_inv_[i][l];
+            mydiff = fabs(mmap_[i2][l2][q] - _mmap_q_nb_[q][l] / _mmap_total_[l]);
+
             if (mydiff > mymaxdiff) {
                 mymaxdiff = mydiff;
             }
@@ -1366,25 +1404,28 @@ double belief_propagation::norm_m_at_i(unsigned int i, double dumping_rate) noex
                                (1.0 - dumping_rate) * mmap_[i2][l2][q];//update psi_{i\to j}
         }
     }
+
     // must return values that is >= 0;
     return mymaxdiff;
+
 }
 
 double bp_basic::bp_iter_update_psi(unsigned int i, double dumping_rate) noexcept {
- /*
- * This function implements Step-7 to Step-11 of Algm III.B of Aurelien Decelle's PRE 84, 066106 (2011) paper
- */
+    /*
+    * This function implements Step-7 to Step-11 of Algm III.B of Aurelien Decelle's PRE 84, 066106 (2011) paper
+    */
+    double mymaxdiff;
     clean_mmap_total_at_node_i_(i);
     sum_all_messages_to_i(i);
     /// Update h_ (Part I. Substract the old psi_j)
     update_h(i, -1);
+    mymaxdiff = norm_m_at_i(i, dumping_rate);
 
-    double mymaxdiff = norm_m_at_i(i, dumping_rate);
     /// Update h_ (Part II. Add the new psi_j)
 
     update_h(i, +1);
-
     update_exph_with_h();
+
     return mymaxdiff;
 }
 
@@ -1393,11 +1434,12 @@ double bp_conditional::bp_iter_update_psi(unsigned int i, double dumping_rate) n
  * This function implements Step-7 to Step-11 of Algm III.B of Aurelien Decelle's PRE 84, 066106 (2011) paper
  */
     if (conf_planted_[i] == -1) {  // random
+        double mymaxdiff;
         clean_mmap_total_at_node_i_(i);
         sum_all_messages_to_i(i);
         // Update h_ (Part I. Substract the old psi_j)
         update_h(i, -1);
-        double mymaxdiff = norm_m_at_i(i, dumping_rate);
+        mymaxdiff = norm_m_at_i(i, dumping_rate);
         // Update h_ (Part II. Add the new psi_j)
         update_h(i, +1);
         update_exph_with_h();

@@ -995,65 +995,69 @@ double blockmodel::bp_iter_update_psi(int i,double dumping_rate)
 	double di=graph_di[i];
 	double a=1.0, b=0.0, normtotal=0.0, normtot_real=0.0;
 	for(int j=0;j<graph_neis[i].size();j++) normtot_psi[j]=0;
-	for (q=0;q<Q;q++){
-		a=1.0;
-		for (l=0;l<graph_neis[i].size();l++){
-			b=0.0;
-			for (int t=0;t<Q;t++) {
-				if(bm_dc==1) b += di*graph_di[graph_neis[i][l]]*cab[t][q]*psi[i][l][t];//sum over messages from l -> i
-				else if(bm_dc==2) {
-					double tmp=di*graph_di[graph_neis[i][l]]*pab[t][q];
-					b += tmp/(1.0+tmp)*psi[i][l][t];//sum over messages from l -> i
-				}else b += cab[t][q]*psi[i][l][t];//sum over messages from l -> i
+	for (q = 0; q < Q; q++) {
+		a = 1.0;
+		for (l = 0; l < graph_neis[i].size(); l++) {
+			b = 0.0;
+			for (int t = 0; t < Q; t++) {
+				if (bm_dc == 1)
+					b += di * graph_di[graph_neis[i][l]] * cab[t][q] * psi[i][l][t];//sum over messages from l -> i
+				else if (bm_dc == 2) {
+					double tmp = di * graph_di[graph_neis[i][l]] * pab[t][q];
+					b += tmp / (1.0 + tmp) * psi[i][l][t];//sum over messages from l -> i
+				} else b += cab[t][q] * psi[i][l][t];//sum over messages from l -> i
 			}
-			a*=b;
-			field_iter[l]=b;
+			a *= b;
+			field_iter[l] = b;
 		}
-		if(bm_dc==1) pom_psi[q] = a*eta[q]*exp(-1.0*di*h[q]/N);
-		else if(bm_dc==2) pom_psi[q] = a*eta[q]*exp(-1.0*di*h[q]/N);
-		else pom_psi[q]=a*eta[q]*exph[q];
+
+		if (bm_dc == 1) pom_psi[q] = a * eta[q] * exp(-1.0 * di * h[q] / N);
+		else if (bm_dc == 2) pom_psi[q] = a * eta[q] * exp(-1.0 * di * h[q] / N);
+		else pom_psi[q] = a * eta[q] * exph[q];
 		normtot_real += pom_psi[q];
-		for (l=0;l<graph_neis[i].size();l++){
-			if(field_iter[l]<EPS){//to cure the problem that field_iter[l] may be very small
-				double tmprob=1.0;
-				for(int lx=0;lx<graph_neis[i].size();lx++){
-					if(lx==l) continue;
+		for (l = 0; l < graph_neis[i].size(); l++) {
+			if (field_iter[l] < EPS) {  //to cure the problem that field_iter[l] may be very small
+				double tmprob = 1.0;
+				for (int lx = 0; lx < graph_neis[i].size(); lx++) {
+					if (lx == l) continue;
 					tmprob *= field_iter[lx];
 				}
-				psii_iter[q][l]=tmprob;
-			}else psii_iter[q][l]=pom_psi[q]/(field_iter[l]);
-			normtot_psi[l]+= psii_iter[q][l];
+				psii_iter[q][l] = tmprob;
+			} else psii_iter[q][l] = pom_psi[q] / (field_iter[l]);
+			normtot_psi[l] += psii_iter[q][l];
 		}
 	}
-	for (int q1=0;q1<Q;q1++){
-		for (int q2=0;q2<Q;q2++) {
-			if(bm_dc==1) h[q1] -= di*cab[q2][q1]*real_psi[i][q2];
-			else if(bm_dc==2) h[q1] -= di*cab[q2][q1]*real_psi[i][q2];
-			else h[q1] -= cab[q2][q1]*real_psi[i][q2];
+	for (int q1 = 0; q1 < Q; q1++) {
+		for (int q2 = 0; q2 < Q; q2++) {
+			if (bm_dc == 1) h[q1] -= di * cab[q2][q1] * real_psi[i][q2];
+			else if (bm_dc == 2) h[q1] -= di * cab[q2][q1] * real_psi[i][q2];
+			else h[q1] -= cab[q2][q1] * real_psi[i][q2];
 		}
 	}
 	// normalization
-	double mymaxdiff=-100.0;
-	for (q=0;q<Q;q++){
-		real_psi[i][q]=pom_psi[q]/normtot_real;
-		for (l=0;l<graph_neis[i].size();l++){
-			int i2=graph_neis[i][l];
-			int l2=graph_neis_inv[i][l];
-			double mydiff=fabs(psi[i2][l2][q]-psii_iter[q][l]/normtot_psi[l]);
+	double mymaxdiff = -100.0;
+	for (q = 0; q < Q; q++) {
+		real_psi[i][q] = pom_psi[q] / normtot_real;
+		for (l = 0; l < graph_neis[i].size(); l++) {
+			int i2 = graph_neis[i][l];
+			int l2 = graph_neis_inv[i][l];
+			double mydiff = fabs(psi[i2][l2][q] - psii_iter[q][l] / normtot_psi[l]);
 			//mymaxdiff += mydiff;
-			if(mydiff > mymaxdiff) mymaxdiff = mydiff;
-			psi[i2][l2][q]=(dumping_rate)*psii_iter[q][l]/normtot_psi[l]+(1.0-dumping_rate)*psi[i2][l2][q];//update psi_{i\to j}
+			if (mydiff > mymaxdiff) mymaxdiff = mydiff;
+			psi[i2][l2][q] = (dumping_rate) * psii_iter[q][l] / normtot_psi[l] +
+							 (1.0 - dumping_rate) * psi[i2][l2][q];//update psi_{i\to j}
 		}
 	}
 	//mymaxdiff /= Q*graph_neis[i].size();
-	for (int q1=0;q1<Q;q1++){
-		for (int q2=0;q2<Q;q2++) {
-			if(bm_dc==1) h[q1] += di*cab[q2][q1]*real_psi[i][q2];
-			else if(bm_dc==2) h[q1] += di*cab[q2][q1]*real_psi[i][q2];
-			else h[q1] += cab[q2][q1]*real_psi[i][q2];
+	for (int q1 = 0; q1 < Q; q1++) {
+		for (int q2 = 0; q2 < Q; q2++) {
+			if (bm_dc == 1) h[q1] += di * cab[q2][q1] * real_psi[i][q2];
+			else if (bm_dc == 2) h[q1] += di * cab[q2][q1] * real_psi[i][q2];
+			else h[q1] += cab[q2][q1] * real_psi[i][q2];
 		}
 	}
-	for(int q=0;q<Q;q++)  exph[q]=myexp(-h[q]/N);
+	for (int q = 0; q < Q; q++) exph[q] = myexp(-h[q] / N);
+
 	return mymaxdiff;
 }
 //}}}
@@ -1142,12 +1146,18 @@ int blockmodel::bp_converge(double bp_err, int max_iter_time,int init_flag, doub
 	else if(vflag >= 3) show_marginals(10);
 	bp_init_h();
 	int iter_time=0;
+
+
 	for(iter_time=0; iter_time<max_iter_time;iter_time++){
 		double maxdiffm = -100.0;
 		vector <int> ranseq;
 		ranseq.resize(N);
 //		shuffle_seq(ranseq);
+
 		for(int iter_inter_time=0;iter_inter_time<N;iter_inter_time++){
+//			std::clog << "iter_inter_time: " << iter_inter_time << "\n";
+//			int num = omp_get_thread_num();
+//			std::clog << "num of threads: " << num << "\n";
 //			int i=ranseq[iter_inter_time];
 			int i=int(FRANDOM*N);
 			double diffm = 0.0;
