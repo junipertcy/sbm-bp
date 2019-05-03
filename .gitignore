@@ -10,8 +10,11 @@ cmake-build-debug/*
 *.gt
 
 # misc
-.idea/*
 bp.cbp
+*.edgelist
+*.txt
+*.gml
+.idea/
 __pycache__/
 
 
